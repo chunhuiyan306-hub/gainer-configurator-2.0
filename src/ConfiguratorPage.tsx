@@ -4,6 +4,7 @@ import { StepSection } from './components/StepSection';
 import { SelectableTile } from './components/SelectableTile';
 import { MediaThumb } from './components/MediaThumb';
 import { PriceBar } from './components/PriceBar';
+import { QuotationSheet } from './components/QuotationSheet';
 import { msg, type UiLocale } from './translations';
 
 function finishColorId(category: FinishCategory, code: string | null, name: string) {
@@ -585,6 +586,9 @@ export function ConfiguratorPage() {
             <p style={{ marginTop: 12, fontSize: 14, color: '#c41e3a' }}>{confirmHint}</p>
           ) : null}
         </StepSection>
+
+        {/* Quotation Sheet — rendered inline below Step 6 */}
+        <QuotationSheet />
       </main>
 
       <PriceBar />
