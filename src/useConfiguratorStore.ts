@@ -595,8 +595,28 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
         const { disabled } = checkFrameFitsSize(frame, state.width, state.height);
         if (disabled) return;
 
+        // Auto-select the first matching handle
+        let autoHandleCode: string | null = null;
+        if (frame.matchedHandle) {
+          const matched = handleList.filter((h) => isHandleMatchedToFrame(h, frame));
+          if (matched.length > 0) autoHandleCode = matched[0].code;
+        }
+
+        // Auto-select the first hinge color
+        const hingeColors =
+          frame.hardwareColors.length > 0
+            ? [...frame.hardwareColors]
+            : frame.matchedHardware ? ['black', 'gray', 'gold'] : [];
+        const autoHingeColor = hingeColors.length > 0 ? hingeColors[0] : null;
+
         set(
-          { selectedFrameCode: code, ...clearFromFinish, configurationConfirmed: false },
+          {
+            selectedFrameCode: code,
+            ...clearFromFinish,
+            selectedHandleCode: autoHandleCode,
+            selectedHingeColor: autoHingeColor,
+            configurationConfirmed: false,
+          },
           undefined,
           'selectFrame',
         );
@@ -625,14 +645,34 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
       // ACTION: selectFinishColor
       // =====================================================================
       selectFinishColor: (code) => {
-        set((s) => ({
-          selectedFinishColorCode: code,
-          configurationConfirmed: false,
-          selectedHandleColor: computeHandleColorAfterUpdate({
-            ...s,
+        set((s) => {
+          const newHandleColor = computeHandleColorAfterUpdate({ ...s, selectedFinishColorCode: code });
+
+          // Auto-match hinge color to finish when possible
+          let autoHingeColor = s.selectedHingeColor;
+          if (code) {
+            const parsed = parseFinishColorSelectionId(code);
+            if (parsed) {
+              const frame = findFrame(s.selectedFrameCode);
+              const hingeColors =
+                frame?.hardwareColors?.length
+                  ? frame.hardwareColors.map((c) => String(c).toLowerCase().trim())
+                  : frame?.matchedHardware ? ['black', 'gray', 'gold'] : [];
+              const token = colorTokenFromFinish(parsed.name, parsed.excelCode);
+              if (token) {
+                const match = hingeColors.find((c) => c === token);
+                if (match) autoHingeColor = match;
+              }
+            }
+          }
+
+          return {
             selectedFinishColorCode: code,
-          }),
-        }), undefined, 'selectFinishColor');
+            configurationConfirmed: false,
+            selectedHandleColor: newHandleColor,
+            selectedHingeColor: autoHingeColor,
+          };
+        }, undefined, 'selectFinishColor');
       },
 
       // =====================================================================
@@ -1171,11 +1211,14 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
         if (!s.selectedFillerCode) errors.push(V.selectFiller);
 
         const frame = findFrame(s.selectedFrameCode);
-        if (frame?.matchedHandle && !s.selectedHandleCode) {
-          errors.push(V.selectHandle);
-        }
-        if (frame?.matchedHandle && s.selectedHandleCode && !s.selectedHandleColor) {
-          errors.push(V.selectHandleColor);
+        if (frame?.matchedHandle) {
+          const matchingHandles = handleList.filter((h) => isHandleMatchedToFrame(h, frame));
+          if (matchingHandles.length > 0 && !s.selectedHandleCode) {
+            errors.push(V.selectHandle);
+          }
+          if (matchingHandles.length > 0 && s.selectedHandleCode && !s.selectedHandleColor) {
+            errors.push(V.selectHandleColor);
+          }
         }
         if (frame?.matchedHardware && !s.selectedHingeColor) {
           errors.push(V.selectHingeColor);
@@ -1210,8 +1253,11 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
 
         let handleSeg = 'NOHNDL';
         if (frame.matchedHandle) {
-          if (!selectedHandleCode || !s.selectedHandleColor) return null;
-          handleSeg = `${skuSanitize(selectedHandleCode)}${skuSanitize(s.selectedHandleColor)}`;
+          const matchedHandles = handleList.filter((h) => isHandleMatchedToFrame(h, frame));
+          if (matchedHandles.length > 0) {
+            if (!selectedHandleCode || !s.selectedHandleColor) return null;
+            handleSeg = `${skuSanitize(selectedHandleCode)}${skuSanitize(s.selectedHandleColor)}`;
+          }
         }
 
         const hingeCalc = get().getHingeCalculation();
@@ -1227,6 +1273,8 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
           const hw = hingeCalc.matchedHardware[0];
           const hwCode = hw.code != null ? String(hw.code) : skuSanitize(hw.name);
           hingeSeg = `${skuSanitize(hwCode)}${skuSanitize(selectedHingeColor)}`;
+        } else if (frame.matchedHardware && selectedHingeColor) {
+          hingeSeg = `HW${skuSanitize(selectedHingeColor)}`;
         }
 
         const dim = `${String(width).padStart(4, '0')}x${String(height).padStart(4, '0')}`;
@@ -1326,7 +1374,7 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
           handleName: handle?.name ?? null,
           handleColor: s.selectedHandleColor,
           hingeHardwareCode: hw0?.code != null ? String(hw0.code) : null,
-          hingeHardwareName: hw0?.name ?? null,
+          hingeHardwareName: hw0?.name ?? frame?.matchedHardware ?? null,
           hingeQtyLabel,
           hingeColor: s.selectedHingeColor,
           generatedSku: get().getGeneratedSku(),
