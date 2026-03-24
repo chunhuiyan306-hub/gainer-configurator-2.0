@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useConfiguratorStore, type FinishCategory } from './useConfiguratorStore';
 import { StepSection } from './components/StepSection';
 import { SelectableTile } from './components/SelectableTile';
@@ -39,7 +39,9 @@ export function ConfiguratorPage() {
   const lockedFillerThickness = useConfiguratorStore((s) => s.lockedFillerThickness);
   const baseMaterial = useConfiguratorStore((s) => s.baseMaterial);
   const selectedHandleCode = useConfiguratorStore((s) => s.selectedHandleCode);
+  const selectedHandleColor = useConfiguratorStore((s) => s.selectedHandleColor);
   const selectedHingeColor = useConfiguratorStore((s) => s.selectedHingeColor);
+  const configurationConfirmed = useConfiguratorStore((s) => s.configurationConfirmed);
 
   const setDimensions = useConfiguratorStore((s) => s.setDimensions);
   const selectFrame = useConfiguratorStore((s) => s.selectFrame);
@@ -48,7 +50,10 @@ export function ConfiguratorPage() {
   const selectFillerType = useConfiguratorStore((s) => s.selectFillerType);
   const selectFiller = useConfiguratorStore((s) => s.selectFiller);
   const selectHandle = useConfiguratorStore((s) => s.selectHandle);
+  const selectHandleColor = useConfiguratorStore((s) => s.selectHandleColor);
   const selectHingeColor = useConfiguratorStore((s) => s.selectHingeColor);
+  const resetConfiguration = useConfiguratorStore((s) => s.resetConfiguration);
+  const confirmConfiguration = useConfiguratorStore((s) => s.confirmConfiguration);
 
   const getFrameOptions = useConfiguratorStore((s) => s.getFrameOptions);
   const getFinishCategoryOptions = useConfiguratorStore((s) => s.getFinishCategoryOptions);
@@ -58,6 +63,10 @@ export function ConfiguratorPage() {
   const getHandleOptions = useConfiguratorStore((s) => s.getHandleOptions);
   const getHingeCalculation = useConfiguratorStore((s) => s.getHingeCalculation);
   const getSelectedFrame = useConfiguratorStore((s) => s.getSelectedFrame);
+  const getHandleColorOptions = useConfiguratorStore((s) => s.getHandleColorOptions);
+  const getValidationErrors = useConfiguratorStore((s) => s.getValidationErrors);
+
+  const [confirmHint, setConfirmHint] = useState<string | null>(null);
 
   const frameOptions = getFrameOptions();
   const finishCategories = getFinishCategoryOptions();
@@ -65,6 +74,7 @@ export function ConfiguratorPage() {
   const fillerTypes = getFillerTypeOptions();
   const fillerOptions = getFillerOptions();
   const handleOptions = getHandleOptions();
+  const handleColorOptions = getHandleColorOptions();
   const hingeCalc = getHingeCalculation();
   const frame = getSelectedFrame();
 
@@ -426,9 +436,43 @@ export function ConfiguratorPage() {
                 );
               })}
             </div>
-          ) : (
+          ) : null}
+          {frame?.matchedHandle && selectedHandleCode ? (
+            <>
+              <p
+                style={{
+                  margin: '20px 0 8px',
+                  fontSize: 14,
+                  color: 'var(--text-secondary)',
+                }}
+              >
+                {t.handleColorLabel}
+              </p>
+              <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--text-secondary)' }}>
+                {t.handleColorHint}
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                {handleColorOptions.map(({ color, disabled }) => {
+                  const key = color.toLowerCase();
+                  const selected = selectedHandleColor?.toLowerCase() === key;
+                  return (
+                    <PillButton
+                      key={color}
+                      selected={selected}
+                      disabled={disabled}
+                      disabledTitle={t.disabledMismatch}
+                      onClick={() => selectHandleColor(color)}
+                    >
+                      {color.charAt(0).toUpperCase() + color.slice(1)}
+                    </PillButton>
+                  );
+                })}
+              </div>
+            </>
+          ) : null}
+          {!frame?.matchedHandle ? (
             <p style={{ color: 'var(--text-secondary)', fontSize: 15 }}>{t.stepHandleSkip}</p>
-          )}
+          ) : null}
         </StepSection>
 
         {/* Step 6 — Hinge */}
@@ -486,6 +530,60 @@ export function ConfiguratorPage() {
               {frame?.matchedHardware ? '' : t.hingeColorSkip}
             </p>
           )}
+
+          <div style={{ marginTop: 28, display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
+            <button
+              type="button"
+              onClick={() => {
+                const errs = getValidationErrors();
+                if (errs.length > 0) {
+                  setConfirmHint(t.confirmBlocked);
+                  return;
+                }
+                setConfirmHint(null);
+                confirmConfiguration();
+              }}
+              style={{
+                padding: '12px 22px',
+                fontSize: 16,
+                fontWeight: 600,
+                borderRadius: 12,
+                border: 'none',
+                background: 'var(--accent)',
+                color: '#fff',
+                cursor: 'pointer',
+              }}
+            >
+              {t.confirmConfiguration}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setConfirmHint(null);
+                resetConfiguration();
+              }}
+              style={{
+                padding: '12px 22px',
+                fontSize: 16,
+                fontWeight: 600,
+                borderRadius: 12,
+                border: '1px solid var(--border-strong)',
+                background: 'var(--surface)',
+                color: 'var(--text)',
+                cursor: 'pointer',
+              }}
+            >
+              {t.resetSelection}
+            </button>
+            {configurationConfirmed ? (
+              <span style={{ fontSize: 14, color: 'var(--accent)', fontWeight: 600 }}>
+                {t.configurationConfirmed}
+              </span>
+            ) : null}
+          </div>
+          {confirmHint ? (
+            <p style={{ marginTop: 12, fontSize: 14, color: '#c41e3a' }}>{confirmHint}</p>
+          ) : null}
         </StepSection>
       </main>
 

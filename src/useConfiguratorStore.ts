@@ -59,6 +59,11 @@ export interface HandleOption {
   disabled: boolean;
 }
 
+export interface HandleColorOption {
+  color: string;
+  disabled: boolean;
+}
+
 export interface HingeCalculation {
   qty: number;
   usePivot: boolean;
@@ -78,6 +83,32 @@ export interface PriceLine {
 export interface PriceBreakdown {
   area: number;
   lines: PriceLine[];
+  total: number | null;
+  hasCustomItems: boolean;
+  summary: string;
+}
+
+export interface QuotationSnapshot {
+  widthMm: number | null;
+  heightMm: number | null;
+  areaM2: number | null;
+  frameCode: string | null;
+  frameDoorType: string | null;
+  finishName: string | null;
+  finishExcelCode: string | null;
+  finishCategory: FinishCategory | null;
+  fillerCode: string | null;
+  fillerName: string | null;
+  handleCode: string | null;
+  handleName: string | null;
+  handleColor: string | null;
+  hingeHardwareCode: string | null;
+  hingeHardwareName: string | null;
+  hingeQtyLabel: string;
+  hingeColor: string | null;
+  generatedSku: string;
+  fullConfigSku: string | null;
+  priceLines: PriceLine[];
   total: number | null;
   hasCustomItems: boolean;
   summary: string;
@@ -156,9 +187,12 @@ interface ConfiguratorState {
 
   // --- Step 5: Handle ---
   selectedHandleCode: string | null;
+  selectedHandleColor: string | null;
 
   // --- Step 6: Hinge ---
   selectedHingeColor: string | null;
+
+  configurationConfirmed: boolean;
 }
 
 // =============================================================================
@@ -174,8 +208,11 @@ interface ConfiguratorActions {
   selectFillerType: (type: FillerType | null) => void;
   selectFiller: (code: string | null) => void;
   selectHandle: (code: string | null) => void;
+  selectHandleColor: (color: string | null) => void;
   selectHingeColor: (color: string | null) => void;
   reset: () => void;
+  resetConfiguration: () => void;
+  confirmConfiguration: () => void;
 }
 
 // =============================================================================
@@ -194,6 +231,9 @@ interface ConfiguratorSelectors {
   getPriceBreakdown: () => PriceBreakdown;
   getValidationErrors: () => string[];
   getConfigurationSku: () => string | null;
+  getGeneratedSku: () => string;
+  getHandleColorOptions: () => HandleColorOption[];
+  getQuotationSnapshot: () => QuotationSnapshot;
 }
 
 // Combine into full store type
@@ -215,7 +255,9 @@ const initialState: ConfiguratorState = {
   lockedFillerThickness: null,
   baseMaterial: null,
   selectedHandleCode: null,
+  selectedHandleColor: null,
   selectedHingeColor: null,
+  configurationConfirmed: false,
 };
 
 // =============================================================================
@@ -230,7 +272,9 @@ const clearFromFinish: Partial<ConfiguratorState> = {
   lockedFillerThickness: null,
   baseMaterial: null,
   selectedHandleCode: null,
+  selectedHandleColor: null,
   selectedHingeColor: null,
+  configurationConfirmed: false,
 };
 
 const clearFromFiller: Partial<ConfiguratorState> = {
@@ -352,6 +396,91 @@ function finishProcessSkuSegment(
   return `${fam}${body}`;
 }
 
+// ---------------------------------------------------------------------------
+// Handle color (aligned with surface finish where possible)
+// ---------------------------------------------------------------------------
+
+const GLOBAL_HANDLE_COLOR_PALETTE = [
+  'black',
+  'gray',
+  'gold',
+  'champagne',
+  'silver',
+  'bronze',
+  'white',
+] as const;
+
+function effectiveHandleAllowedColorSet(handle: Handle, frame: Frame | null): Set<string> {
+  const set = new Set<string>();
+  const ac = handle.allowedColors;
+  const swatch = ac.some((x) => String(x).toLowerCase() === 'color swatch colors');
+  if (swatch) {
+    for (const c of GLOBAL_HANDLE_COLOR_PALETTE) set.add(c);
+    if (frame?.hardwareColors?.length) {
+      for (const c of frame.hardwareColors) {
+        set.add(String(c).toLowerCase().trim());
+      }
+    }
+    return set;
+  }
+  for (const x of ac) set.add(String(x).toLowerCase().trim());
+  return set;
+}
+
+function handleColorOptionRows(handle: Handle, frame: Frame | null): HandleColorOption[] {
+  const allowed = effectiveHandleAllowedColorSet(handle, frame);
+  const ordered: string[] = [...GLOBAL_HANDLE_COLOR_PALETTE];
+  for (const c of allowed) {
+    if (!ordered.includes(c)) ordered.push(c);
+  }
+  return ordered.map((color) => ({
+    color,
+    disabled: !allowed.has(color),
+  }));
+}
+
+/** Map surface finish name / code to a handle swatch token. */
+function colorTokenFromFinish(finishName: string, excelCode: string | null | undefined): string | null {
+  const text = `${finishName} ${excelCode ?? ''}`.toLowerCase();
+  if (/champagne|香槟/.test(text)) return 'champagne';
+  if (/(\b|_)black|matte\s*black|墨黑|磨砂黑/.test(text)) return 'black';
+  if (/\bgold|luxury\s*gold|金色/.test(text)) return 'gold';
+  if (/bronze|青铜|古铜/.test(text)) return 'bronze';
+  if (/silver|银白|silver-white|雪白/.test(text)) return 'silver';
+  if (/\bwhite\b|乳白|纯白/.test(text)) return 'white';
+  if (/gray|grey|灰|roman/.test(text)) return 'gray';
+  return null;
+}
+
+function computeHandleColorAfterUpdate(state: ConfiguratorState): string | null {
+  if (!state.selectedHandleCode) return null;
+  const frame = findFrame(state.selectedFrameCode);
+  const handle = handleList.find((h) => h.code === state.selectedHandleCode);
+  if (!frame?.matchedHandle || !handle) return null;
+  const allowed = effectiveHandleAllowedColorSet(handle, frame);
+  const parsed = parseFinishColorSelectionId(state.selectedFinishColorCode);
+  if (parsed) {
+    const token = colorTokenFromFinish(parsed.name, parsed.excelCode);
+    if (token && allowed.has(token)) return token;
+  }
+  const cur = state.selectedHandleColor?.toLowerCase() ?? '';
+  if (cur && allowed.has(cur)) return cur;
+  return null;
+}
+
+function findFillerByCode(code: string | null): { code: string; name: string } | null {
+  if (!code) return null;
+  const g = glassList.find((x) => x.code === code);
+  if (g) return { code: g.code, name: g.name };
+  const l = leatherList.find((x) => x.code === code);
+  if (l) return { code: l.code, name: l.name };
+  const w = woodVeneerList.find((x) => x.code === code);
+  if (w) return { code: w.code, name: w.name };
+  const q = quartzStoneList.find((x) => x.code === code);
+  if (q) return { code: q.code, name: q.name };
+  return { code, name: code };
+}
+
 // =============================================================================
 // Zustand Store Creation
 // =============================================================================
@@ -390,7 +519,7 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
             }
           }
         }
-        set(updates, undefined, 'setDimensions');
+        set({ ...updates, configurationConfirmed: false }, undefined, 'setDimensions');
       },
 
       // =====================================================================
@@ -402,7 +531,11 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
         if (code === state.selectedFrameCode) return;
 
         if (!code) {
-          set({ selectedFrameCode: null, ...clearFromFinish }, undefined, 'selectFrame/clear');
+          set(
+            { selectedFrameCode: null, ...clearFromFinish, configurationConfirmed: false },
+            undefined,
+            'selectFrame/clear',
+          );
           return;
         }
 
@@ -413,7 +546,7 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
         if (disabled) return;
 
         set(
-          { selectedFrameCode: code, ...clearFromFinish },
+          { selectedFrameCode: code, ...clearFromFinish, configurationConfirmed: false },
           undefined,
           'selectFrame',
         );
@@ -428,7 +561,11 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
         const state = get();
         if (category === state.selectedFinishCategory) return;
         set(
-          { selectedFinishCategory: category, selectedFinishColorCode: null },
+          {
+            selectedFinishCategory: category,
+            selectedFinishColorCode: null,
+            configurationConfirmed: false,
+          },
           undefined,
           'selectFinishCategory',
         );
@@ -438,7 +575,14 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
       // ACTION: selectFinishColor
       // =====================================================================
       selectFinishColor: (code) => {
-        set({ selectedFinishColorCode: code }, undefined, 'selectFinishColor');
+        set((s) => ({
+          selectedFinishColorCode: code,
+          configurationConfirmed: false,
+          selectedHandleColor: computeHandleColorAfterUpdate({
+            ...s,
+            selectedFinishColorCode: code,
+          }),
+        }), undefined, 'selectFinishColor');
       },
 
       // =====================================================================
@@ -454,6 +598,7 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
             selectedFillerCode: null,
             lockedFillerThickness: null,
             baseMaterial: null,
+            configurationConfirmed: false,
           },
           undefined,
           'selectFillerType',
@@ -468,7 +613,12 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
       selectFiller: (code) => {
         if (!code) {
           set(
-            { selectedFillerCode: null, lockedFillerThickness: null, baseMaterial: null },
+            {
+              selectedFillerCode: null,
+              lockedFillerThickness: null,
+              baseMaterial: null,
+              configurationConfirmed: false,
+            },
             undefined,
             'selectFiller/clear',
           );
@@ -496,6 +646,7 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
             selectedFillerCode: code,
             lockedFillerThickness: lockedThickness,
             baseMaterial: baseMat,
+            configurationConfirmed: false,
           },
           undefined,
           'selectFiller',
@@ -506,14 +657,33 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
       // ACTION: selectHandle
       // =====================================================================
       selectHandle: (code) => {
-        set({ selectedHandleCode: code }, undefined, 'selectHandle');
+        if (!code) {
+          set(
+            { selectedHandleCode: null, selectedHandleColor: null, configurationConfirmed: false },
+            undefined,
+            'selectHandle/clear',
+          );
+          return;
+        }
+        set((s) => ({
+          selectedHandleCode: code,
+          configurationConfirmed: false,
+          selectedHandleColor: computeHandleColorAfterUpdate({ ...s, selectedHandleCode: code }),
+        }), undefined, 'selectHandle');
+      },
+
+      // =====================================================================
+      // ACTION: selectHandleColor
+      // =====================================================================
+      selectHandleColor: (color) => {
+        set({ selectedHandleColor: color, configurationConfirmed: false }, undefined, 'selectHandleColor');
       },
 
       // =====================================================================
       // ACTION: selectHingeColor
       // =====================================================================
       selectHingeColor: (color) => {
-        set({ selectedHingeColor: color }, undefined, 'selectHingeColor');
+        set({ selectedHingeColor: color, configurationConfirmed: false }, undefined, 'selectHingeColor');
       },
 
       // =====================================================================
@@ -522,6 +692,22 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
       reset: () => {
         const locale = get().uiLocale;
         set({ ...initialState, uiLocale: locale }, undefined, 'reset');
+      },
+
+      // =====================================================================
+      // ACTION: resetConfiguration — alias for full reset (keeps language)
+      // =====================================================================
+      resetConfiguration: () => {
+        const locale = get().uiLocale;
+        set({ ...initialState, uiLocale: locale }, undefined, 'resetConfiguration');
+      },
+
+      // =====================================================================
+      // ACTION: confirmConfiguration
+      // =====================================================================
+      confirmConfiguration: () => {
+        if (get().getValidationErrors().length > 0) return;
+        set({ configurationConfirmed: true }, undefined, 'confirmConfiguration');
       },
 
       // =====================================================================
@@ -871,6 +1057,9 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
         if (frame?.matchedHandle && !s.selectedHandleCode) {
           errors.push(V.selectHandle);
         }
+        if (frame?.matchedHandle && s.selectedHandleCode && !s.selectedHandleColor) {
+          errors.push(V.selectHandleColor);
+        }
         if (frame?.matchedHardware && !s.selectedHingeColor) {
           errors.push(V.selectHingeColor);
         }
@@ -904,8 +1093,8 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
 
         let handleSeg = 'NOHNDL';
         if (frame.matchedHandle) {
-          if (!selectedHandleCode) return null;
-          handleSeg = skuSanitize(selectedHandleCode);
+          if (!selectedHandleCode || !s.selectedHandleColor) return null;
+          handleSeg = `${skuSanitize(selectedHandleCode)}${skuSanitize(s.selectedHandleColor)}`;
         }
 
         const hingeCalc = get().getHingeCalculation();
@@ -925,6 +1114,93 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
 
         const dim = `${String(width).padStart(4, '0')}x${String(height).padStart(4, '0')}`;
         return `G-${selectedFrameCode}-${selectedFillerCode}-${finishSeg}-${handleSeg}-${hingeSeg}-${dim}`;
+      },
+
+      // =====================================================================
+      // SELECTOR: getGeneratedSku — 5-part code, empty → 000 (user-facing)
+      // =====================================================================
+      getGeneratedSku: (): string => {
+        const s = get();
+        const frame = s.selectedFrameCode ?? '000';
+        const fin = parseFinishColorSelectionId(s.selectedFinishColorCode);
+        const finishSeg =
+          fin?.excelCode && String(fin.excelCode).trim() !== ''
+            ? String(fin.excelCode).trim()
+            : '000';
+        const filler = s.selectedFillerCode ?? '000';
+        const handle = s.selectedHandleCode ?? '000';
+        const hingeCalc = get().getHingeCalculation();
+        let hinge = '000';
+        if (hingeCalc.matchedHardware.length > 0 && hingeCalc.matchedHardware[0].code != null) {
+          hinge = skuSanitize(String(hingeCalc.matchedHardware[0].code));
+        } else if (hingeCalc.usePivot) {
+          const pivotHw = hardwareList.find((hw) => hw.name.toLowerCase().includes('pivot'));
+          hinge = pivotHw?.code != null ? skuSanitize(String(pivotHw.code)) : 'PIVOT';
+        }
+        return [frame, finishSeg, filler, handle, hinge].join('-');
+      },
+
+      // =====================================================================
+      // SELECTOR: getHandleColorOptions
+      // =====================================================================
+      getHandleColorOptions: (): HandleColorOption[] => {
+        const frame = findFrame(get().selectedFrameCode);
+        const handle = handleList.find((h) => h.code === get().selectedHandleCode);
+        if (!frame?.matchedHandle || !handle) return [];
+        return handleColorOptionRows(handle, frame);
+      },
+
+      // =====================================================================
+      // SELECTOR: getQuotationSnapshot
+      // =====================================================================
+      getQuotationSnapshot: (): QuotationSnapshot => {
+        const s = get();
+        const L = msg(s.uiLocale);
+        const frame = findFrame(s.selectedFrameCode);
+        const fin = parseFinishColorSelectionId(s.selectedFinishColorCode);
+        const filler = findFillerByCode(s.selectedFillerCode);
+        const handle = handleList.find((h) => h.code === s.selectedHandleCode);
+        const hingeCalc = get().getHingeCalculation();
+        const price = get().getPriceBreakdown();
+
+        const w = s.width;
+        const h = s.height;
+        const area =
+          w != null && h != null && w > 0 && h > 0
+            ? Math.round((w / 1000) * (h / 1000) * 100) / 100
+            : null;
+
+        let hingeQtyLabel = '—';
+        if (hingeCalc.usePivot) hingeQtyLabel = L.hingePivot;
+        else if (hingeCalc.qty > 0) hingeQtyLabel = L.hingeEach(hingeCalc.qty);
+
+        const hw0 = hingeCalc.matchedHardware[0];
+
+        return {
+          widthMm: w,
+          heightMm: h,
+          areaM2: area,
+          frameCode: s.selectedFrameCode,
+          frameDoorType: frame?.doorType ?? null,
+          finishName: fin?.name ?? null,
+          finishExcelCode: fin?.excelCode ?? null,
+          finishCategory: fin?.category ?? s.selectedFinishCategory,
+          fillerCode: s.selectedFillerCode,
+          fillerName: filler?.name ?? null,
+          handleCode: s.selectedHandleCode,
+          handleName: handle?.name ?? null,
+          handleColor: s.selectedHandleColor,
+          hingeHardwareCode: hw0?.code != null ? String(hw0.code) : null,
+          hingeHardwareName: hw0?.name ?? null,
+          hingeQtyLabel,
+          hingeColor: s.selectedHingeColor,
+          generatedSku: get().getGeneratedSku(),
+          fullConfigSku: get().getConfigurationSku(),
+          priceLines: price.lines,
+          total: price.total,
+          hasCustomItems: price.hasCustomItems,
+          summary: price.summary,
+        };
       },
     }),
     { name: 'GainerConfigurator' },
@@ -948,3 +1224,6 @@ export const useSelectedHandleCode = () => useConfiguratorStore((s) => s.selecte
 export const useSelectedHingeColor = () => useConfiguratorStore((s) => s.selectedHingeColor);
 export const useUiLocale = () => useConfiguratorStore((s) => s.uiLocale);
 export const useSetUiLocale = () => useConfiguratorStore((s) => s.setUiLocale);
+export const useSelectedHandleColor = () => useConfiguratorStore((s) => s.selectedHandleColor);
+export const useConfigurationConfirmed = () =>
+  useConfiguratorStore((s) => s.configurationConfirmed);
