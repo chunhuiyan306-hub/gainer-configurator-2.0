@@ -318,6 +318,40 @@ function skuSanitize(part: string): string {
   return part.replace(/[^a-zA-Z0-9]/g, '').toUpperCase() || 'X';
 }
 
+/** Stored id: `finishCategory::excelCodeOrEmpty::colorName` (see ConfiguratorPage.finishColorId). */
+function parseFinishColorSelectionId(id: string | null): {
+  category: FinishCategory;
+  excelCode: string | null;
+  name: string;
+} | null {
+  if (!id) return null;
+  const [cat, codePart, ...nameParts] = id.split('::');
+  const name = nameParts.join('::');
+  if (cat !== 'anodize' && cat !== 'spraySoftTouch' && cat !== 'sprayMetallic') return null;
+  return {
+    category: cat as FinishCategory,
+    excelCode: codePart === '' ? null : codePart,
+    name,
+  };
+}
+
+/** Distinguish process family in SKU; Excel color codes live in the sheets (e.g. YPF01, PAE06). */
+const FINISH_FAMILY_SKU_PREFIX: Record<FinishCategory, string> = {
+  anodize: 'A',
+  spraySoftTouch: 'T',
+  sprayMetallic: 'M',
+};
+
+function finishProcessSkuSegment(
+  parsed: NonNullable<ReturnType<typeof parseFinishColorSelectionId>>,
+): string {
+  const fam = FINISH_FAMILY_SKU_PREFIX[parsed.category];
+  const body = parsed.excelCode
+    ? skuSanitize(parsed.excelCode)
+    : skuSanitize(parsed.name);
+  return `${fam}${body}`;
+}
+
 // =============================================================================
 // Zustand Store Creation
 // =============================================================================
@@ -846,7 +880,8 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
 
       // =====================================================================
       // SELECTOR: getConfigurationSku
-      // Frame + infill + handle + hinge (hardware code + color) + W×H (mm).
+      // Frame + infill + surface finish (Excel process/color code) + handle +
+      // hinge (hardware code + color) + W×H (mm).
       // =====================================================================
       getConfigurationSku: (): string | null => {
         const s = get();
@@ -855,12 +890,17 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
           height,
           selectedFrameCode,
           selectedFillerCode,
+          selectedFinishColorCode,
           selectedHandleCode,
           selectedHingeColor,
         } = s;
         if (!width || !height || !selectedFrameCode || !selectedFillerCode) return null;
         const frame = findFrame(selectedFrameCode);
         if (!frame) return null;
+
+        const finishParsed = parseFinishColorSelectionId(selectedFinishColorCode);
+        if (!finishParsed) return null;
+        const finishSeg = finishProcessSkuSegment(finishParsed);
 
         let handleSeg = 'NOHNDL';
         if (frame.matchedHandle) {
@@ -884,7 +924,7 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
         }
 
         const dim = `${String(width).padStart(4, '0')}x${String(height).padStart(4, '0')}`;
-        return `G-${selectedFrameCode}-${selectedFillerCode}-${handleSeg}-${hingeSeg}-${dim}`;
+        return `G-${selectedFrameCode}-${selectedFillerCode}-${finishSeg}-${handleSeg}-${hingeSeg}-${dim}`;
       },
     }),
     { name: 'GainerConfigurator' },

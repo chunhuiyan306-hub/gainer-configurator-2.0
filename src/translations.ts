@@ -56,7 +56,7 @@ const M = {
     customPricingNote: '价格计算中包含定制项，需联系客服',
     completeForPricing: '请完成全部选项以查看价格。',
     skuLabel: 'SKU',
-    skuIncomplete: '完成尺寸、型材、填充、拉手与铰链选项后生成',
+    skuIncomplete: '完成尺寸、型材、表面工艺色、填充、拉手与铰链选项后生成',
 
     disabledMismatch: '与当前门框参数不匹配',
 
@@ -153,7 +153,8 @@ const M = {
     customPricingNote: 'Estimate includes custom items — contact sales',
     completeForPricing: 'Complete all steps to see pricing.',
     skuLabel: 'SKU',
-    skuIncomplete: 'Complete size, frame, infill, handle, and hinge selections to generate',
+    skuIncomplete:
+      'Complete size, frame, surface finish, infill, handle, and hinge selections to generate',
 
     disabledMismatch: 'Does not match current frame constraints',
 
