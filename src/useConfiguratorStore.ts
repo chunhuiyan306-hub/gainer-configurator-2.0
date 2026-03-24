@@ -15,6 +15,7 @@ import {
   hardwareList,
   handleList,
 } from './data';
+import { msg, readStoredLocale, writeStoredLocale, type UiLocale } from './translations';
 
 // =============================================================================
 // Type Definitions
@@ -134,6 +135,8 @@ function resolveStandardGlassPrice(
 // =============================================================================
 
 interface ConfiguratorState {
+  uiLocale: UiLocale;
+
   // --- Step 1: Dimensions ---
   width: number | null;
   height: number | null;
@@ -163,6 +166,7 @@ interface ConfiguratorState {
 // =============================================================================
 
 interface ConfiguratorActions {
+  setUiLocale: (locale: UiLocale) => void;
   setDimensions: (w: number | null, h: number | null) => void;
   selectFrame: (code: string | null) => void;
   selectFinishCategory: (category: FinishCategory | null) => void;
@@ -189,6 +193,7 @@ interface ConfiguratorSelectors {
   getHingeCalculation: () => HingeCalculation;
   getPriceBreakdown: () => PriceBreakdown;
   getValidationErrors: () => string[];
+  getConfigurationSku: () => string | null;
 }
 
 // Combine into full store type
@@ -199,6 +204,7 @@ export type ConfiguratorStore = ConfiguratorState & ConfiguratorActions & Config
 // =============================================================================
 
 const initialState: ConfiguratorState = {
+  uiLocale: readStoredLocale(),
   width: null,
   height: null,
   selectedFrameCode: null,
@@ -268,27 +274,6 @@ function checkFrameFitsSize(
   return { disabled: false, reason: null };
 }
 
-// =============================================================================
-// Finish Category Labels
-// =============================================================================
-
-const FINISH_CATEGORY_LABELS: Record<FinishCategory, string> = {
-  anodize: 'Anodize',
-  spraySoftTouch: 'Spray Soft Touch',
-  sprayMetallic: 'Spray Metallic',
-};
-
-// =============================================================================
-// Filler Type Labels
-// =============================================================================
-
-const FILLER_TYPE_LABELS: Record<FillerType, string> = {
-  glass: 'Glass',
-  leather: 'Leather',
-  woodVeneer: 'Wood Veneer',
-  quartzStone: 'Quartz Stone',
-};
-
 const FILLER_TYPE_TO_ALLOWED: Record<FillerType, string[]> = {
   glass: ['glass'],
   leather: ['leather'],
@@ -329,6 +314,10 @@ function findMatchedHardware(frame: Frame): Hardware[] {
     ;
 }
 
+function skuSanitize(part: string): string {
+  return part.replace(/[^a-zA-Z0-9]/g, '').toUpperCase() || 'X';
+}
+
 // =============================================================================
 // Zustand Store Creation
 // =============================================================================
@@ -337,6 +326,14 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
   devtools(
     (set, get) => ({
       ...initialState,
+
+      // =====================================================================
+      // ACTION: setUiLocale
+      // =====================================================================
+      setUiLocale: (locale) => {
+        writeStoredLocale(locale);
+        set({ uiLocale: locale }, undefined, 'setUiLocale');
+      },
 
       // =====================================================================
       // ACTION: setDimensions
@@ -489,7 +486,8 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
       // ACTION: reset
       // =====================================================================
       reset: () => {
-        set(initialState, undefined, 'reset');
+        const locale = get().uiLocale;
+        set({ ...initialState, uiLocale: locale }, undefined, 'reset');
       },
 
       // =====================================================================
@@ -520,9 +518,10 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
         const frame = findFrame(get().selectedFrameCode);
         const allCategories: FinishCategory[] = ['anodize', 'spraySoftTouch', 'sprayMetallic'];
 
+        const L = msg(get().uiLocale);
         return allCategories.map((cat) => ({
           category: cat,
-          label: FINISH_CATEGORY_LABELS[cat],
+          label: L.finish[cat],
           disabled: frame ? !frame.allowedFinishing.includes(cat) : true,
         }));
       },
@@ -562,6 +561,7 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
         const frame = findFrame(get().selectedFrameCode);
         const allTypes: FillerType[] = ['glass', 'leather', 'woodVeneer', 'quartzStone'];
 
+        const L = msg(get().uiLocale);
         return allTypes.map((ft) => {
           const matchKeys = FILLER_TYPE_TO_ALLOWED[ft];
           const allowed = frame
@@ -569,7 +569,7 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
             : false;
           return {
             type: ft,
-            label: FILLER_TYPE_LABELS[ft],
+            label: L.filler[ft],
             disabled: !allowed,
           };
         });
@@ -588,7 +588,7 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
         const frame = findFrame(get().selectedFrameCode);
         const thicknessLimit = frame?.fillerThicknessLimit ?? [];
 
-        let pool: Filler[];
+        let pool: readonly Filler[];
         switch (selectedFillerType) {
           case 'glass':       pool = glassList; break;
           case 'leather':     pool = leatherList; break;
@@ -671,8 +671,7 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
         } else {
           qty = 0;
           usePivot = true;
-          pivotWarning =
-            'Door height exceeds 2500mm — pivot hinge (天地轴) is required instead of standard hinges.';
+          pivotWarning = msg(get().uiLocale).pivotWarning;
         }
 
         const matched = findMatchedHardware(frame);
@@ -689,6 +688,7 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
       // =====================================================================
       getPriceBreakdown: (): PriceBreakdown => {
         const state = get();
+        const L = msg(state.uiLocale).price;
         const { width, height, selectedFrameCode, selectedFillerCode } = state;
 
         const emptyBreakdown: PriceBreakdown = {
@@ -696,7 +696,7 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
           lines: [],
           total: null,
           hasCustomItems: false,
-          summary: 'Please complete all selections to see pricing.',
+          summary: L.empty,
         };
 
         if (!width || !height) return emptyBreakdown;
@@ -714,14 +714,14 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
             if (sqmPrice !== null) {
               const lineTotal = Math.round(area * sqmPrice * 100) / 100;
               lines.push({
-                label: `Frame (${selectedFrameCode}) + Glass (${selectedFillerCode})`,
+                label: L.frameGlass(selectedFrameCode, selectedFillerCode),
                 amount: lineTotal,
                 status: 'calculated',
               });
               runningTotal += lineTotal;
             } else {
               lines.push({
-                label: `Frame (${selectedFrameCode}) + Glass (${selectedFillerCode})`,
+                label: L.frameGlass(selectedFrameCode, selectedFillerCode),
                 amount: null,
                 status: 'tba',
               });
@@ -729,7 +729,7 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
             }
           } else {
             lines.push({
-              label: `Frame (${selectedFrameCode}) + Filler (${selectedFillerCode})`,
+              label: L.frameFiller(selectedFrameCode, selectedFillerCode),
               amount: null,
               status: 'tba',
             });
@@ -737,7 +737,7 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
           }
         } else if (selectedFrameCode) {
           lines.push({
-            label: `Frame (${selectedFrameCode}) — awaiting filler selection`,
+            label: L.frameAwaitFiller(selectedFrameCode),
             amount: null,
             status: 'tba',
           });
@@ -751,14 +751,14 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
           if (hw.pricePerPiece !== null) {
             const hwTotal = hw.pricePerPiece * hingeCalc.qty;
             lines.push({
-              label: `${hw.name} × ${hingeCalc.qty}`,
+              label: L.hingeLine(hw.name, hingeCalc.qty),
               amount: hwTotal,
               status: 'calculated',
             });
             runningTotal += hwTotal;
           } else {
             lines.push({
-              label: `${hw.name} × ${hingeCalc.qty}`,
+              label: L.hingeLine(hw.name, hingeCalc.qty),
               amount: null,
               status: 'tba',
             });
@@ -770,14 +770,14 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
           );
           if (pivotHw && pivotHw.pricePerPiece !== null) {
             lines.push({
-              label: `${pivotHw.name} (pivot set)`,
+              label: L.pivotSet(pivotHw.name),
               amount: pivotHw.pricePerPiece,
               status: 'calculated',
             });
             runningTotal += pivotHw.pricePerPiece;
           } else {
             lines.push({
-              label: 'Pivot hinge (天地轴)',
+              label: L.pivotGeneric,
               amount: null,
               status: 'tba',
             });
@@ -788,7 +788,7 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
         // --- Leather base material note ---
         if (state.baseMaterial) {
           lines.push({
-            label: `Base Material: ${state.baseMaterial}`,
+            label: L.baseMaterial(state.baseMaterial),
             amount: null,
             status: 'included',
           });
@@ -797,8 +797,8 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
         // --- Summary ---
         const total = hasCustom ? null : runningTotal;
         const summary = hasCustom
-          ? `Subtotal: ¥${runningTotal.toFixed(2)} + custom items (TBA) — please contact sales.`
-          : `Total: ¥${runningTotal.toFixed(2)}`;
+          ? L.subtotalCustom(runningTotal.toFixed(2))
+          : L.total(runningTotal.toFixed(2));
 
         return { area, lines, total, hasCustomItems: hasCustom, summary };
       },
@@ -809,37 +809,82 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
       // =====================================================================
       getValidationErrors: (): string[] => {
         const s = get();
+        const V = msg(s.uiLocale).validation;
         const errors: string[] = [];
 
         if (s.width === null || s.height === null) {
-          errors.push('Please enter door width (W) and height (H).');
+          errors.push(V.widthHeight);
         }
-        if (s.width !== null && s.width <= 0) errors.push('Width must be positive.');
-        if (s.height !== null && s.height <= 0) errors.push('Height must be positive.');
+        if (s.width !== null && s.width <= 0) errors.push(V.widthPositive);
+        if (s.height !== null && s.height <= 0) errors.push(V.heightPositive);
 
         if (!s.selectedFrameCode) {
-          errors.push('Please select a frame profile.');
+          errors.push(V.selectFrame);
         } else {
           const frame = findFrame(s.selectedFrameCode);
           if (frame) {
             const { disabled, reason } = checkFrameFitsSize(frame, s.width, s.height);
-            if (disabled) errors.push(`Frame ${s.selectedFrameCode} does not fit: ${reason}`);
+            if (disabled && reason)
+              errors.push(V.frameNoFit(s.selectedFrameCode, reason));
           }
         }
 
-        if (!s.selectedFinishCategory) errors.push('Please select a surface finish category.');
-        if (!s.selectedFinishColorCode) errors.push('Please select a surface finish color.');
-        if (!s.selectedFillerCode) errors.push('Please select a filler material.');
+        if (!s.selectedFinishCategory) errors.push(V.selectFinishCategory);
+        if (!s.selectedFinishColorCode) errors.push(V.selectFinishColor);
+        if (!s.selectedFillerCode) errors.push(V.selectFiller);
 
         const frame = findFrame(s.selectedFrameCode);
         if (frame?.matchedHandle && !s.selectedHandleCode) {
-          errors.push('Please select a handle.');
+          errors.push(V.selectHandle);
         }
         if (frame?.matchedHardware && !s.selectedHingeColor) {
-          errors.push('Please select a hinge color.');
+          errors.push(V.selectHingeColor);
         }
 
         return errors;
+      },
+
+      // =====================================================================
+      // SELECTOR: getConfigurationSku
+      // Frame + infill + handle + hinge (hardware code + color) + W×H (mm).
+      // =====================================================================
+      getConfigurationSku: (): string | null => {
+        const s = get();
+        const {
+          width,
+          height,
+          selectedFrameCode,
+          selectedFillerCode,
+          selectedHandleCode,
+          selectedHingeColor,
+        } = s;
+        if (!width || !height || !selectedFrameCode || !selectedFillerCode) return null;
+        const frame = findFrame(selectedFrameCode);
+        if (!frame) return null;
+
+        let handleSeg = 'NOHNDL';
+        if (frame.matchedHandle) {
+          if (!selectedHandleCode) return null;
+          handleSeg = skuSanitize(selectedHandleCode);
+        }
+
+        const hingeCalc = get().getHingeCalculation();
+        let hingeSeg = 'NOHW';
+        if (hingeCalc.usePivot) {
+          const pivotHw = hardwareList.find((hw) =>
+            hw.name.toLowerCase().includes('pivot'),
+          );
+          const c = pivotHw?.code != null ? String(pivotHw.code) : 'PIVOT';
+          hingeSeg = `${skuSanitize(c)}PIVOT`;
+        } else if (frame.matchedHardware && hingeCalc.matchedHardware.length > 0) {
+          if (!selectedHingeColor) return null;
+          const hw = hingeCalc.matchedHardware[0];
+          const hwCode = hw.code != null ? String(hw.code) : skuSanitize(hw.name);
+          hingeSeg = `${skuSanitize(hwCode)}${skuSanitize(selectedHingeColor)}`;
+        }
+
+        const dim = `${String(width).padStart(4, '0')}x${String(height).padStart(4, '0')}`;
+        return `G-${selectedFrameCode}-${selectedFillerCode}-${handleSeg}-${hingeSeg}-${dim}`;
       },
     }),
     { name: 'GainerConfigurator' },
@@ -861,3 +906,5 @@ export const useLockedFillerThickness = () => useConfiguratorStore((s) => s.lock
 export const useBaseMaterial = () => useConfiguratorStore((s) => s.baseMaterial);
 export const useSelectedHandleCode = () => useConfiguratorStore((s) => s.selectedHandleCode);
 export const useSelectedHingeColor = () => useConfiguratorStore((s) => s.selectedHingeColor);
+export const useUiLocale = () => useConfiguratorStore((s) => s.uiLocale);
+export const useSetUiLocale = () => useConfiguratorStore((s) => s.setUiLocale);

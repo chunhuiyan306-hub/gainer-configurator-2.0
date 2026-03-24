@@ -1,7 +1,7 @@
 import { PlaceholderImage } from './PlaceholderImage';
 import type { CSSProperties } from 'react';
-
-const DISABLED_TOOLTIP = '与当前门框参数不匹配';
+import { useConfiguratorStore } from '../useConfiguratorStore';
+import { msg } from '../translations';
 
 export function MediaThumb({
   picture,
@@ -14,6 +14,9 @@ export function MediaThumb({
   disabled?: boolean;
   style?: CSSProperties;
 }) {
+  const uiLocale = useConfiguratorStore((s) => s.uiLocale);
+  const disabledTitle = msg(uiLocale).disabledMismatch;
+
   const wrap: CSSProperties = {
     width: '100%',
     aspectRatio: '4 / 3',
@@ -36,14 +39,14 @@ export function MediaThumb({
             display: 'block',
             opacity: disabled ? 0.5 : 1,
           }}
-          title={disabled ? DISABLED_TOOLTIP : undefined}
+          title={disabled ? disabledTitle : undefined}
         />
       </div>
     );
   }
 
   return (
-    <div style={wrap} title={disabled ? DISABLED_TOOLTIP : undefined}>
+    <div style={wrap} title={disabled ? disabledTitle : undefined}>
       <PlaceholderImage style={{ width: '100%', height: '100%' }} />
     </div>
   );

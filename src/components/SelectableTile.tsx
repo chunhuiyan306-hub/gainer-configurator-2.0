@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react';
-
-const DISABLED_TOOLTIP = '与当前门框参数不匹配';
+import { useConfiguratorStore } from '../useConfiguratorStore';
+import { msg } from '../translations';
 
 type SelectableTileProps = {
   selected: boolean;
@@ -21,13 +21,16 @@ export function SelectableTile({
   children,
   style,
 }: SelectableTileProps) {
+  const uiLocale = useConfiguratorStore((s) => s.uiLocale);
+  const disabledTitle = msg(uiLocale).disabledMismatch;
+
   return (
     <div
       role="button"
       tabIndex={disabled ? -1 : 0}
       aria-disabled={disabled}
       aria-pressed={selected}
-      title={disabled ? DISABLED_TOOLTIP : undefined}
+      title={disabled ? disabledTitle : undefined}
       onClick={() => {
         if (!disabled) onClick();
       }}

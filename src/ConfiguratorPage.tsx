@@ -1,24 +1,10 @@
 import { useEffect, type ReactNode } from 'react';
-import { useConfiguratorStore, type FinishCategory, type FillerType } from './useConfiguratorStore';
+import { useConfiguratorStore, type FinishCategory } from './useConfiguratorStore';
 import { StepSection } from './components/StepSection';
 import { SelectableTile } from './components/SelectableTile';
 import { MediaThumb } from './components/MediaThumb';
 import { PriceBar } from './components/PriceBar';
-
-const FINISH_LABELS: Record<FinishCategory, string> = {
-  anodize: '阳极氧化',
-  spraySoftTouch: '亲肤喷涂',
-  sprayMetallic: '金属喷涂',
-};
-
-const FILLER_LABELS: Record<FillerType, string> = {
-  glass: '玻璃',
-  leather: '皮革',
-  woodVeneer: '木皮',
-  quartzStone: '岩板',
-};
-
-const DISABLED_TOOLTIP = '与当前门框参数不匹配';
+import { msg, type UiLocale } from './translations';
 
 function finishColorId(category: FinishCategory, code: string | null, name: string) {
   return `${category}::${code ?? ''}::${name}`;
@@ -39,6 +25,10 @@ function fillerLabel(f: { name: string; code: string }) {
 }
 
 export function ConfiguratorPage() {
+  const uiLocale = useConfiguratorStore((s) => s.uiLocale);
+  const setUiLocale = useConfiguratorStore((s) => s.setUiLocale);
+  const t = msg(uiLocale);
+
   const width = useConfiguratorStore((s) => s.width);
   const height = useConfiguratorStore((s) => s.height);
   const selectedFrameCode = useConfiguratorStore((s) => s.selectedFrameCode);
@@ -94,27 +84,41 @@ export function ConfiguratorPage() {
         }}
       >
         <header style={{ marginBottom: 56 }}>
-          <h1
+          <div
             style={{
-              margin: 0,
-              fontSize: 40,
-              fontWeight: 600,
-              letterSpacing: '-0.03em',
-              lineHeight: 1.1,
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'flex-start',
+              justifyContent: 'space-between',
+              gap: 16,
             }}
           >
-            Gainer 铝框门
-          </h1>
-          <p style={{ margin: '12px 0 0', fontSize: 19, color: 'var(--text-secondary)' }}>
-            按步骤配置您的门板。选项已与门框参数联动。
-          </p>
+            <div style={{ minWidth: 0, flex: '1 1 280px' }}>
+              <h1
+                style={{
+                  margin: 0,
+                  fontSize: 40,
+                  fontWeight: 600,
+                  letterSpacing: '-0.03em',
+                  lineHeight: 1.1,
+                }}
+              >
+                {t.appTitle}
+              </h1>
+              <p style={{ margin: '12px 0 0', fontSize: 19, color: 'var(--text-secondary)' }}>
+                {t.appSubtitle}
+              </p>
+            </div>
+            <LanguageToggle locale={uiLocale} onChange={setUiLocale} labels={{ zh: t.langZh, en: t.langEn }} />
+          </div>
         </header>
 
         {/* Step 1 — Dimensions */}
         <StepSection
           step={1}
-          title="门板尺寸"
-          subtitle="请先输入宽度 W 与高度 H（毫米）。后续门框与填充物将按此尺寸校验。"
+          stepPrefix={t.stepPrefix}
+          title={t.stepDimensionsTitle}
+          subtitle={t.stepDimensionsSubtitle}
         >
           <div
             style={{
@@ -125,11 +129,11 @@ export function ConfiguratorPage() {
             }}
           >
             <label style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 140 }}>
-              <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>宽度 W (mm)</span>
+              <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{t.widthLabel}</span>
               <input
                 type="number"
                 min={1}
-                placeholder="例如 600"
+                placeholder={t.widthPlaceholder}
                 value={width === null ? '' : width}
                 onChange={(e) => {
                   const v = e.target.value;
@@ -152,11 +156,11 @@ export function ConfiguratorPage() {
               />
             </label>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 140 }}>
-              <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>高度 H (mm)</span>
+              <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{t.heightLabel}</span>
               <input
                 type="number"
                 min={1}
-                placeholder="例如 2200"
+                placeholder={t.heightPlaceholder}
                 value={height === null ? '' : height}
                 onChange={(e) => {
                   const v = e.target.value;
@@ -184,8 +188,9 @@ export function ConfiguratorPage() {
         {/* Step 2 — Frame */}
         <StepSection
           step={2}
-          title="门框型材"
-          subtitle="不符合当前 W×H 的门框已置灰，且不可选择。"
+          stepPrefix={t.stepPrefix}
+          title={t.stepFrameTitle}
+          subtitle={t.stepFrameSubtitle}
         >
           <div style={gridStyle}>
             {frameOptions.map(({ frame: f, disabled }) => {
@@ -224,11 +229,12 @@ export function ConfiguratorPage() {
         {/* Step 3 — Surface */}
         <StepSection
           step={3}
-          title="表面处理"
-          subtitle="先选工艺大类，再选具体颜色。与门框不兼容的类别与色样已置灰。"
+          stepPrefix={t.stepPrefix}
+          title={t.stepSurfaceTitle}
+          subtitle={t.stepSurfaceSubtitle}
         >
           <p style={{ margin: '0 0 12px', fontSize: 14, color: 'var(--text-secondary)' }}>
-            工艺大类
+            {t.finishCategoryLabel}
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 24 }}>
             {finishCategories.map(({ category, label, disabled }) => {
@@ -238,9 +244,10 @@ export function ConfiguratorPage() {
                   key={category}
                   selected={selected}
                   disabled={disabled}
+                  disabledTitle={t.disabledMismatch}
                   onClick={() => selectFinishCategory(category)}
                 >
-                  {FINISH_LABELS[category] ?? label}
+                  {label}
                 </PillButton>
               );
             })}
@@ -249,7 +256,7 @@ export function ConfiguratorPage() {
           {selectedFinishCategory ? (
             <>
               <p style={{ margin: '0 0 12px', fontSize: 14, color: 'var(--text-secondary)' }}>
-                颜色
+                {t.finishColorLabel}
               </p>
               <div style={gridStyle}>
                 {finishColors.map(({ color, disabled }) => {
@@ -285,30 +292,32 @@ export function ConfiguratorPage() {
               </div>
             </>
           ) : (
-            <p style={{ color: 'var(--text-secondary)', fontSize: 15 }}>请先选择工艺大类。</p>
+            <p style={{ color: 'var(--text-secondary)', fontSize: 15 }}>{t.pickFinishCategoryFirst}</p>
           )}
         </StepSection>
 
         {/* Step 4 — Filler */}
         <StepSection
           step={4}
-          title="填充物"
-          subtitle="材质需与门型匹配；玻璃厚度由门框锁定，不兼容的玻璃已置灰。"
+          stepPrefix={t.stepPrefix}
+          title={t.stepFillerTitle}
+          subtitle={t.stepFillerSubtitle}
         >
           <p style={{ margin: '0 0 12px', fontSize: 14, color: 'var(--text-secondary)' }}>
-            材质大类
+            {t.fillerCategoryLabel}
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 24 }}>
-            {fillerTypes.map(({ type, disabled }) => {
+            {fillerTypes.map(({ type, disabled, label }) => {
               const selected = selectedFillerType === type;
               return (
                 <PillButton
                   key={type}
                   selected={selected}
                   disabled={disabled}
+                  disabledTitle={t.disabledMismatch}
                   onClick={() => selectFillerType(type)}
                 >
-                  {FILLER_LABELS[type]}
+                  {label}
                 </PillButton>
               );
             })}
@@ -345,7 +354,7 @@ export function ConfiguratorPage() {
                           <div
                             style={{ marginTop: 6, fontSize: 11, color: 'var(--accent)' }}
                           >
-                            厚度锁定 {lockedThickness} mm
+                            {t.thicknessLocked(lockedThickness)}
                           </div>
                         ) : null}
                       </div>
@@ -361,28 +370,31 @@ export function ConfiguratorPage() {
                     color: 'var(--text-secondary)',
                   }}
                 >
-                  基材（皮革）：<strong style={{ color: 'var(--text)' }}>{baseMaterial}</strong>
+                  {t.leatherBasePrefix}
+                  <strong style={{ color: 'var(--text)' }}>{baseMaterial}</strong>
                 </p>
               ) : null}
               {lockedFillerThickness !== null ? (
                 <p style={{ marginTop: 8, fontSize: 14, color: 'var(--text-secondary)' }}>
-                  当前锁定厚度：<strong style={{ color: 'var(--text)' }}>{lockedFillerThickness} mm</strong>
+                  {t.lockedThicknessPrefix}
+                  <strong style={{ color: 'var(--text)' }}>{lockedFillerThickness} mm</strong>
                 </p>
               ) : null}
             </>
           ) : (
-            <p style={{ color: 'var(--text-secondary)', fontSize: 15 }}>请先选择材质大类。</p>
+            <p style={{ color: 'var(--text-secondary)', fontSize: 15 }}>{t.pickFillerCategoryFirst}</p>
           )}
         </StepSection>
 
         {/* Step 5 — Handle */}
         <StepSection
           step={5}
-          title="拉手"
+          stepPrefix={t.stepPrefix}
+          title={t.stepHandleTitle}
           subtitle={
             frame?.matchedHandle
-              ? `当前门框指定拉手规格：${frame.matchedHandle}`
-              : '当前门框无需选择拉手。'
+              ? t.stepHandleSubtitleMatch(frame.matchedHandle)
+              : t.stepHandleSubtitleNone
           }
         >
           {frame?.matchedHandle ? (
@@ -415,20 +427,21 @@ export function ConfiguratorPage() {
               })}
             </div>
           ) : (
-            <p style={{ color: 'var(--text-secondary)', fontSize: 15 }}>此步骤可跳过。</p>
+            <p style={{ color: 'var(--text-secondary)', fontSize: 15 }}>{t.stepHandleSkip}</p>
           )}
         </StepSection>
 
         {/* Step 6 — Hinge */}
         <StepSection
           step={6}
-          title="铰链"
+          stepPrefix={t.stepPrefix}
+          title={t.stepHingeTitle}
           subtitle={
             hingeCalc.pivotWarning
-              ? '请按提示选用天地轴（Pivot）方案。'
+              ? t.stepHingeSubtitlePivot
               : frame?.matchedHardware
-                ? `五金：${frame.matchedHardware}`
-                : '当前门框未指定铰链条目时可跳过颜色。'
+                ? t.stepHingeSubtitleMatch(frame.matchedHardware)
+                : t.stepHingeSubtitleNone
           }
         >
           {hingeCalc.pivotWarning ? (
@@ -448,7 +461,7 @@ export function ConfiguratorPage() {
           {frame?.matchedHardware && hingeCalc.availableColors.length > 0 ? (
             <>
               <p style={{ margin: '0 0 12px', fontSize: 14, color: 'var(--text-secondary)' }}>
-                铰链颜色
+                {t.hingeColorLabel}
               </p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
                 {hingeCalc.availableColors.map((c) => {
@@ -459,6 +472,7 @@ export function ConfiguratorPage() {
                       key={c}
                       selected={selected}
                       disabled={false}
+                      disabledTitle={t.disabledMismatch}
                       onClick={() => selectHingeColor(c)}
                     >
                       {c}
@@ -469,7 +483,7 @@ export function ConfiguratorPage() {
             </>
           ) : (
             <p style={{ color: 'var(--text-secondary)', fontSize: 15 }}>
-              {frame?.matchedHardware ? '' : '无需选择铰链颜色。'}
+              {frame?.matchedHardware ? '' : t.hingeColorSkip}
             </p>
           )}
         </StepSection>
@@ -504,15 +518,54 @@ function FinishColorSync() {
   return null;
 }
 
+function LanguageToggle({
+  locale,
+  onChange,
+  labels,
+}: {
+  locale: UiLocale;
+  onChange: (l: UiLocale) => void;
+  labels: { zh: string; en: string };
+}) {
+  const btn = (active: boolean) =>
+    ({
+      padding: '8px 16px',
+      fontSize: 14,
+      fontWeight: 600,
+      borderRadius: 980,
+      border: active ? '2px solid var(--accent)' : '1px solid var(--border-strong)',
+      background: active ? 'rgba(0, 113, 227, 0.08)' : 'var(--surface)',
+      color: 'var(--text)',
+      cursor: 'pointer',
+      outline: 'none',
+    }) as const;
+
+  return (
+    <div
+      role="group"
+      style={{ display: 'inline-flex', gap: 8, flexShrink: 0, alignItems: 'center' }}
+    >
+      <button type="button" style={btn(locale === 'zh')} onClick={() => onChange('zh')}>
+        {labels.zh}
+      </button>
+      <button type="button" style={btn(locale === 'en')} onClick={() => onChange('en')}>
+        {labels.en}
+      </button>
+    </div>
+  );
+}
+
 function PillButton({
   children,
   selected,
   disabled,
+  disabledTitle,
   onClick,
 }: {
   children: ReactNode;
   selected: boolean;
   disabled: boolean;
+  disabledTitle?: string;
   onClick: () => void;
 }) {
   return (
@@ -521,7 +574,7 @@ function PillButton({
       tabIndex={disabled ? -1 : 0}
       aria-disabled={disabled}
       aria-pressed={selected}
-      title={disabled ? DISABLED_TOOLTIP : undefined}
+      title={disabled && disabledTitle ? disabledTitle : undefined}
       onClick={() => {
         if (!disabled) onClick();
       }}

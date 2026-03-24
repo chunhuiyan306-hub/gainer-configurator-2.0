@@ -17,16 +17,16 @@ export interface SizeLimits {
 export interface Frame {
   code: string;
   doorType: string;
-  allowedFillers: string[];
-  standardFillers: string[];
-  fillerThicknessLimit: number[];
-  allowedFinishing: string[];
-  specificColors: string[] | null;
+  allowedFillers: readonly string[];
+  standardFillers: readonly string[];
+  fillerThicknessLimit: readonly number[];
+  allowedFinishing: readonly string[];
+  specificColors: readonly string[] | null;
   sizeLimits: SizeLimits;
   doorThickness: number | null;
   matchedHandle: string | null;
   matchedHardware: string | null;
-  hardwareColors: string[];
+  hardwareColors: readonly string[];
   picture: string | null;
 }
 
@@ -36,7 +36,7 @@ export interface Glass {
   type: 'glass';
   craft: string | null;
   craftCode: string | null;
-  thicknesses: number[];
+  thicknesses: readonly number[];
   silkScreen: boolean;
   pricingType: 'standard' | 'custom';
   priceSqm: number | null;
@@ -47,7 +47,7 @@ export interface Leather {
   code: string;
   name: string;
   type: 'leather';
-  thicknesses: number[];
+  thicknesses: readonly number[];
   baseMaterial: 'Honeycomb Aluminum';
   pricingType: 'custom';
   picture: string | null;
@@ -57,7 +57,7 @@ export interface WoodVeneer {
   code: string;
   name: string;
   type: 'woodVeneer';
-  thicknesses: number[];
+  thicknesses: readonly number[];
   pricingType: 'custom';
   picture: string | null;
 }
@@ -67,7 +67,7 @@ export interface QuartzStone {
   name: string;
   type: 'quartzStone';
   surface: string | null;
-  thicknesses: number[];
+  thicknesses: readonly number[];
   pricingType: 'custom';
   picture: string | null;
 }
@@ -89,7 +89,7 @@ export interface SurfaceFinishes {
 export interface Hardware {
   code: string | null;
   name: string;
-  allowedColors: string[];
+  allowedColors: readonly string[];
   pricePerPiece: number | null;
   picture: string | null;
 }
@@ -98,7 +98,7 @@ export interface Handle {
   code: string;
   name: string;
   surfaceFinishing: string | null;
-  allowedColors: string[];
+  allowedColors: readonly string[];
   picture: string | null;
 }
 
@@ -107,7 +107,7 @@ export interface Handle {
 // 1. Frames (Cabinet Doors)
 // ---------------------------------------------------------------------------
 
-export const frames: Frame[] = [
+export const frames = [
 {
     code: 'GM004',
     doorType: 'aluminum frame glass door',
@@ -126,7 +126,7 @@ export const frames: Frame[] = [
     matchedHandle: 'MK097',
     matchedHardware: 'top and bottom hinge(with gainer logo/without logo）',
     hardwareColors: ['black', 'gray', 'gold'],
-    picture: null,
+    picture: '/assets/catalog/cabinet-door/GM004.png',
   },
 {
     code: 'GM090',
@@ -146,7 +146,7 @@ export const frames: Frame[] = [
     matchedHandle: 'routed handle(CNC)',
     matchedHardware: 'straight quick-install hinge/concealed quick-install hinge',
     hardwareColors: ['black', 'gray', 'gold'],
-    picture: null,
+    picture: '/assets/catalog/cabinet-door/GM090.png',
   },
 {
     code: 'GM023',
@@ -166,7 +166,7 @@ export const frames: Frame[] = [
     matchedHandle: 'routed handle(CNC)',
     matchedHardware: 'heavy duty lift-off hinge/Hettich Sensys 8631i narrow frame concealed hinge/Blum CLIP top hinge 95°',
     hardwareColors: ['black', 'gray', 'gold'],
-    picture: null,
+    picture: '/assets/catalog/cabinet-door/GM023.jpg',
   },
 {
     code: 'MK118',
@@ -186,7 +186,7 @@ export const frames: Frame[] = [
     matchedHandle: 'MK097',
     matchedHardware: 'top and bottom hinge(with gainer logo/without logo）',
     hardwareColors: ['black', 'gray', 'gold'],
-    picture: null,
+    picture: '/assets/catalog/cabinet-door/MK118.png',
   },
 {
     code: 'MK336',
@@ -206,7 +206,7 @@ export const frames: Frame[] = [
     matchedHandle: 'MK097',
     matchedHardware: 'Hettich Sensys 8631i narrow frame concealed hinge',
     hardwareColors: ['black', 'silver'],
-    picture: null,
+    picture: '/assets/catalog/cabinet-door/MK336.png',
   },
 {
     code: 'GM054',
@@ -226,7 +226,7 @@ export const frames: Frame[] = [
     matchedHandle: 'routed handle(CNC)',
     matchedHardware: 'RY-ZSJL-G pin hinge',
     hardwareColors: ['black', 'gray', 'gold'],
-    picture: null,
+    picture: '/assets/catalog/cabinet-door/GM054.jpg',
   },
 {
     code: 'MK162',
@@ -246,7 +246,7 @@ export const frames: Frame[] = [
     matchedHandle: 'routed handle(CNC)',
     matchedHardware: 'RY-ZSJL-G pin hinge',
     hardwareColors: ['black', 'gray', 'gold'],
-    picture: null,
+    picture: '/assets/catalog/cabinet-door/MK162.png',
   },
 {
     code: 'GM106',
@@ -266,7 +266,7 @@ export const frames: Frame[] = [
     matchedHandle: null,
     matchedHardware: 'top and bottom hinge(with gainer logo/without logo）',
     hardwareColors: ['black', 'gray', 'gold'],
-    picture: null,
+    picture: '/assets/catalog/cabinet-door/GM106.png',
   },
 {
     code: 'MK169',
@@ -286,7 +286,7 @@ export const frames: Frame[] = [
     matchedHandle: 'routed handle(CNC)',
     matchedHardware: 'top and bottom hinge(with gainer logo/without logo）',
     hardwareColors: ['black', 'gray', 'gold'],
-    picture: null,
+    picture: '/assets/catalog/cabinet-door/MK169.png',
   },
 {
     code: 'MK073',
@@ -306,7 +306,7 @@ export const frames: Frame[] = [
     matchedHandle: 'recessed handle',
     matchedHardware: 'top and bottom hinge(with gainer logo/without logo）',
     hardwareColors: ['black', 'gray', 'gold'],
-    picture: null,
+    picture: '/assets/catalog/cabinet-door/MK073.png',
   },
 {
     code: 'GM073',
@@ -326,7 +326,7 @@ export const frames: Frame[] = [
     matchedHandle: 'integrated  hidden door handle',
     matchedHardware: 'Blum hinge( 95° for thick doors)/Salice (Series 200 soft-close hinge 94°)',
     hardwareColors: ['black', 'gray', 'gold'],
-    picture: null,
+    picture: '/assets/catalog/cabinet-door/GM073.png',
   },
 {
     code: 'GM074',
@@ -346,7 +346,7 @@ export const frames: Frame[] = [
     matchedHandle: 'EM962E_128',
     matchedHardware: 'Blum hinge( 95° for thick doors)/Salice (Series 200 soft-close hinge 94°)',
     hardwareColors: ['black', 'gray', 'gold'],
-    picture: null,
+    picture: '/assets/catalog/cabinet-door/GM074.png',
   },
 {
     code: 'GM097',
@@ -366,7 +366,7 @@ export const frames: Frame[] = [
     matchedHandle: 'GNN2769A',
     matchedHardware: null,
     hardwareColors: [],
-    picture: null,
+    picture: '/assets/catalog/cabinet-door/GM097.png',
   },
 {
     code: 'GM072',
@@ -386,7 +386,7 @@ export const frames: Frame[] = [
     matchedHandle: 'GM072-2-1',
     matchedHardware: 'RY-TDJL-ZXA heavy-duty top and bottom hinge',
     hardwareColors: ['black'],
-    picture: null,
+    picture: '/assets/catalog/cabinet-door/GM072.png',
   },
 {
     code: 'MK304',
@@ -406,7 +406,7 @@ export const frames: Frame[] = [
     matchedHandle: null,
     matchedHardware: 'RY-TDJL-ZXA heavy-duty top and bottom hinge',
     hardwareColors: ['black'],
-    picture: null,
+    picture: '/assets/catalog/cabinet-door/MK304.png',
   },
 {
     code: 'GM060',
@@ -426,7 +426,7 @@ export const frames: Frame[] = [
     matchedHandle: null,
     matchedHardware: 'RY-TDJL-ZXA heavy-duty top and bottom hinge',
     hardwareColors: ['black'],
-    picture: null,
+    picture: '/assets/catalog/cabinet-door/GM060.png',
   },
 {
     code: 'GM043',
@@ -446,7 +446,7 @@ export const frames: Frame[] = [
     matchedHandle: null,
     matchedHardware: 'Salice CQ concealed wooden door hinge T12 (half overlay)',
     hardwareColors: ['black', 'gray', 'gold'],
-    picture: null,
+    picture: '/assets/catalog/cabinet-door/GM043.png',
   },
 {
     code: 'GM094',
@@ -466,7 +466,7 @@ export const frames: Frame[] = [
     matchedHandle: 'GM094-2-C1L-SAGE',
     matchedHardware: 'Hettich 8631i narrow frame concealed hinge',
     hardwareColors: ['black', 'silver'],
-    picture: null,
+    picture: '/assets/catalog/cabinet-door/GM094.png',
   },
 {
     code: 'STM008',
@@ -486,7 +486,7 @@ export const frames: Frame[] = [
     matchedHandle: 'GF zinc alloy handle AGB 5085 Magnetic Mortise Lock Body + Cylinder',
     matchedHardware: 'JM470-1-2 top and bottom hinges',
     hardwareColors: ['black'],
-    picture: null,
+    picture: '/assets/catalog/cabinet-door/STM008.png',
   },
 {
     code: 'STM019',
@@ -506,7 +506,7 @@ export const frames: Frame[] = [
     matchedHandle: 'GNN2525-1A',
     matchedHardware: 'AN 172 3D',
     hardwareColors: ['black', 'gray', 'gold'],
-    picture: null,
+    picture: '/assets/catalog/cabinet-door/STM019.png',
   },
 {
     code: 'MK008',
@@ -526,7 +526,7 @@ export const frames: Frame[] = [
     matchedHandle: null,
     matchedHardware: 'track and wheel',
     hardwareColors: [],
-    picture: null,
+    picture: '/assets/catalog/cabinet-door/MK008.png',
   },
 {
     code: 'MK165',
@@ -546,7 +546,7 @@ export const frames: Frame[] = [
     matchedHandle: null,
     matchedHardware: 'pivot accessory',
     hardwareColors: [],
-    picture: null,
+    picture: '/assets/catalog/cabinet-door/MK165.png',
   },
 {
     code: 'MK234',
@@ -566,7 +566,7 @@ export const frames: Frame[] = [
     matchedHandle: null,
     matchedHardware: 'pivot accessory',
     hardwareColors: [],
-    picture: null,
+    picture: '/assets/catalog/cabinet-door/MK234.png',
   },
 {
     code: 'YM002',
@@ -586,7 +586,7 @@ export const frames: Frame[] = [
     matchedHandle: null,
     matchedHardware: 'track and wheel',
     hardwareColors: [],
-    picture: null,
+    picture: '/assets/catalog/cabinet-door/YM002.png',
   },
 {
     code: 'GM013',
@@ -606,7 +606,7 @@ export const frames: Frame[] = [
     matchedHandle: null,
     matchedHardware: 'RY-ZSJL-F2 pin hinge (metal cover)',
     hardwareColors: ['black', 'gray', 'gold'],
-    picture: null,
+    picture: '/assets/catalog/cabinet-door/GM013.png',
   },
 {
     code: 'GM055',
@@ -626,7 +626,7 @@ export const frames: Frame[] = [
     matchedHandle: null,
     matchedHardware: 'Salice CQ concealed wooden door hinge T12 (half overlay)',
     hardwareColors: ['black', 'gray', 'gold'],
-    picture: null,
+    picture: '/assets/catalog/cabinet-door/GM055.png',
   },
 {
     code: 'GM056',
@@ -646,7 +646,7 @@ export const frames: Frame[] = [
     matchedHandle: null,
     matchedHardware: 'RY-ZSJL-G pin hinge',
     hardwareColors: ['black', 'gray', 'gold'],
-    picture: null,
+    picture: '/assets/catalog/cabinet-door/GM056.png',
   },
 {
     code: 'GM057',
@@ -666,7 +666,7 @@ export const frames: Frame[] = [
     matchedHandle: 'GM047-3 GM047-4 GM047-5',
     matchedHardware: 'JL002-L&JL002-R top and bottom hinges',
     hardwareColors: ['black', 'gray', 'gold'],
-    picture: null,
+    picture: '/assets/catalog/cabinet-door/GM057.png',
   },
 {
     code: 'GM060',
@@ -686,7 +686,7 @@ export const frames: Frame[] = [
     matchedHandle: null,
     matchedHardware: 'JL002-L&JL002-R top and bottom hinges',
     hardwareColors: ['black', 'gray', 'gold'],
-    picture: null,
+    picture: '/assets/catalog/cabinet-door/GM060.png',
   },
 {
     code: 'GM092',
@@ -706,7 +706,7 @@ export const frames: Frame[] = [
     matchedHandle: null,
     matchedHardware: 'concealed quick-install hinge',
     hardwareColors: ['black', 'gray', 'gold'],
-    picture: null,
+    picture: '/assets/catalog/cabinet-door/GM092.png',
   },
 {
     code: 'MK036',
@@ -726,7 +726,7 @@ export const frames: Frame[] = [
     matchedHandle: 'GM047-3 GM047-4 GM047-5',
     matchedHardware: 'Pin hinge (Gainer style)',
     hardwareColors: ['black', 'gray', 'gold'],
-    picture: null,
+    picture: '/assets/catalog/cabinet-door/MK036.png',
   },
 {
     code: 'MK206',
@@ -746,7 +746,7 @@ export const frames: Frame[] = [
     matchedHandle: null,
     matchedHardware: 'cup hinge',
     hardwareColors: ['black', 'gray', 'gold'],
-    picture: null,
+    picture: '/assets/catalog/cabinet-door/MK206.png',
   },
 {
     code: 'MK267',
@@ -766,7 +766,7 @@ export const frames: Frame[] = [
     matchedHandle: null,
     matchedHardware: 'JL002-L&JL002-R top and bottom hinges',
     hardwareColors: ['black', 'gray', 'gold'],
-    picture: null,
+    picture: '/assets/catalog/cabinet-door/MK267.png',
   },
 {
     code: 'MK007',
@@ -786,7 +786,7 @@ export const frames: Frame[] = [
     matchedHandle: null,
     matchedHardware: null,
     hardwareColors: [],
-    picture: null,
+    picture: '/assets/catalog/cabinet-door/MK007.png',
   },
 {
     code: 'STM007',
@@ -806,7 +806,7 @@ export const frames: Frame[] = [
     matchedHandle: 'zinc alloy single handle 5085 Magnetic Mortise Lock Body + Cylinder',
     matchedHardware: 'AN 160 3D Concealed Hinge',
     hardwareColors: ['black', 'gray'],
-    picture: null,
+    picture: '/assets/catalog/cabinet-door/STM007.png',
   },
 {
     code: 'MK010',
@@ -826,7 +826,7 @@ export const frames: Frame[] = [
     matchedHandle: null,
     matchedHardware: 'top and bottom hinges',
     hardwareColors: ['black', 'gray', 'gold'],
-    picture: null,
+    picture: '/assets/catalog/cabinet-door/MK010.png',
   },
 {
     code: 'MK028',
@@ -846,7 +846,7 @@ export const frames: Frame[] = [
     matchedHandle: null,
     matchedHardware: 'cup hinge',
     hardwareColors: ['black', 'gray', 'gold'],
-    picture: null,
+    picture: '/assets/catalog/cabinet-door/MK028.png',
   },
 {
     code: 'MK030',
@@ -866,7 +866,7 @@ export const frames: Frame[] = [
     matchedHandle: null,
     matchedHardware: 'top and bottom hinges',
     hardwareColors: ['black', 'gray', 'gold'],
-    picture: null,
+    picture: '/assets/catalog/cabinet-door/MK030.png',
   },
 {
     code: 'MK032',
@@ -886,7 +886,7 @@ export const frames: Frame[] = [
     matchedHandle: null,
     matchedHardware: 'top and bottom hinges',
     hardwareColors: ['black', 'gray', 'gold'],
-    picture: null,
+    picture: '/assets/catalog/cabinet-door/MK032.png',
   },
 {
     code: 'MK042',
@@ -906,7 +906,7 @@ export const frames: Frame[] = [
     matchedHandle: null,
     matchedHardware: 'top and bottom hinges',
     hardwareColors: ['black', 'gray', 'gold'],
-    picture: null,
+    picture: '/assets/catalog/cabinet-door/MK042.png',
   },
 {
     code: 'MK054',
@@ -926,7 +926,7 @@ export const frames: Frame[] = [
     matchedHandle: null,
     matchedHardware: 'cup hinge',
     hardwareColors: ['black', 'gray', 'gold'],
-    picture: null,
+    picture: '/assets/catalog/cabinet-door/MK054.png',
   },
 {
     code: 'MK106',
@@ -946,7 +946,7 @@ export const frames: Frame[] = [
     matchedHandle: null,
     matchedHardware: 'top and bottom hinges',
     hardwareColors: ['black', 'gray', 'gold'],
-    picture: null,
+    picture: '/assets/catalog/cabinet-door/MK106.png',
   },
 {
     code: 'MK048',
@@ -966,7 +966,7 @@ export const frames: Frame[] = [
     matchedHandle: null,
     matchedHardware: null,
     hardwareColors: [],
-    picture: null,
+    picture: '/assets/catalog/cabinet-door/MK048.png',
   },
 {
     code: 'STM024',
@@ -986,7 +986,7 @@ export const frames: Frame[] = [
     matchedHandle: null,
     matchedHardware: null,
     hardwareColors: [],
-    picture: null,
+    picture: '/assets/catalog/cabinet-door/STM024.png',
   },
 {
     code: 'MK133',
@@ -1006,7 +1006,7 @@ export const frames: Frame[] = [
     matchedHandle: null,
     matchedHardware: null,
     hardwareColors: [],
-    picture: null,
+    picture: '/assets/catalog/cabinet-door/MK133.png',
   },
 {
     code: 'MK211',
@@ -1046,16 +1046,16 @@ export const frames: Frame[] = [
     matchedHandle: null,
     matchedHardware: null,
     hardwareColors: [],
-    picture: null,
+    picture: '/assets/catalog/cabinet-door/MK234.png',
   }
-];
+] as const;
 
 
 // ---------------------------------------------------------------------------
 // 2. Glass Fillers
 // ---------------------------------------------------------------------------
 
-export const glassList: Glass[] = [
+export const glassList = [
 {
     code: 'G01',
     name: 'Ultra-clear glass',
@@ -1066,7 +1066,7 @@ export const glassList: Glass[] = [
     silkScreen: false,
     pricingType: 'standard',
     priceSqm: null,
-    picture: null,
+    picture: '/assets/catalog/glass/G01.png',
   },
 {
     code: 'G02',
@@ -1078,7 +1078,7 @@ export const glassList: Glass[] = [
     silkScreen: false,
     pricingType: 'custom',
     priceSqm: null,
-    picture: null,
+    picture: '/assets/catalog/glass/G02.png',
   },
 {
     code: 'G03',
@@ -1090,7 +1090,7 @@ export const glassList: Glass[] = [
     silkScreen: false,
     pricingType: 'custom',
     priceSqm: null,
-    picture: null,
+    picture: '/assets/catalog/glass/G03.png',
   },
 {
     code: 'G04',
@@ -1102,7 +1102,7 @@ export const glassList: Glass[] = [
     silkScreen: false,
     pricingType: 'custom',
     priceSqm: null,
-    picture: null,
+    picture: '/assets/catalog/glass/G04.png',
   },
 {
     code: 'G05',
@@ -1114,7 +1114,7 @@ export const glassList: Glass[] = [
     silkScreen: false,
     pricingType: 'custom',
     priceSqm: null,
-    picture: null,
+    picture: '/assets/catalog/glass/G05.png',
   },
 {
     code: 'G06',
@@ -1126,7 +1126,7 @@ export const glassList: Glass[] = [
     silkScreen: false,
     pricingType: 'custom',
     priceSqm: null,
-    picture: null,
+    picture: '/assets/catalog/glass/G06.png',
   },
 {
     code: 'G07',
@@ -1138,7 +1138,7 @@ export const glassList: Glass[] = [
     silkScreen: false,
     pricingType: 'custom',
     priceSqm: null,
-    picture: null,
+    picture: '/assets/catalog/glass/G07.png',
   },
 {
     code: 'G08',
@@ -1150,7 +1150,7 @@ export const glassList: Glass[] = [
     silkScreen: false,
     pricingType: 'custom',
     priceSqm: null,
-    picture: null,
+    picture: '/assets/catalog/glass/G08.png',
   },
 {
     code: 'G09',
@@ -1162,7 +1162,7 @@ export const glassList: Glass[] = [
     silkScreen: false,
     pricingType: 'custom',
     priceSqm: null,
-    picture: null,
+    picture: '/assets/catalog/glass/G09.png',
   },
 {
     code: 'G10',
@@ -1174,7 +1174,7 @@ export const glassList: Glass[] = [
     silkScreen: false,
     pricingType: 'custom',
     priceSqm: null,
-    picture: null,
+    picture: '/assets/catalog/glass/G10.png',
   },
 {
     code: 'G11',
@@ -1186,7 +1186,7 @@ export const glassList: Glass[] = [
     silkScreen: false,
     pricingType: 'custom',
     priceSqm: null,
-    picture: null,
+    picture: '/assets/catalog/glass/G11.png',
   },
 {
     code: 'G12',
@@ -1198,7 +1198,7 @@ export const glassList: Glass[] = [
     silkScreen: false,
     pricingType: 'custom',
     priceSqm: null,
-    picture: null,
+    picture: '/assets/catalog/glass/G12.png',
   },
 {
     code: 'G13',
@@ -1210,7 +1210,7 @@ export const glassList: Glass[] = [
     silkScreen: false,
     pricingType: 'custom',
     priceSqm: null,
-    picture: null,
+    picture: '/assets/catalog/glass/G13.png',
   },
 {
     code: 'G14',
@@ -1222,7 +1222,7 @@ export const glassList: Glass[] = [
     silkScreen: false,
     pricingType: 'custom',
     priceSqm: null,
-    picture: null,
+    picture: '/assets/catalog/glass/G14.png',
   },
 {
     code: 'G15',
@@ -1234,7 +1234,7 @@ export const glassList: Glass[] = [
     silkScreen: false,
     pricingType: 'custom',
     priceSqm: null,
-    picture: null,
+    picture: '/assets/catalog/glass/G15.png',
   },
 {
     code: 'G16',
@@ -1246,7 +1246,7 @@ export const glassList: Glass[] = [
     silkScreen: true,
     pricingType: 'custom',
     priceSqm: null,
-    picture: null,
+    picture: '/assets/catalog/glass/G16.png',
   },
 {
     code: 'G17',
@@ -1258,7 +1258,7 @@ export const glassList: Glass[] = [
     silkScreen: true,
     pricingType: 'custom',
     priceSqm: null,
-    picture: null,
+    picture: '/assets/catalog/glass/G17.png',
   },
 {
     code: 'G18',
@@ -1270,7 +1270,7 @@ export const glassList: Glass[] = [
     silkScreen: false,
     pricingType: 'custom',
     priceSqm: null,
-    picture: null,
+    picture: '/assets/catalog/glass/G18.png',
   },
 {
     code: 'G19',
@@ -1282,7 +1282,7 @@ export const glassList: Glass[] = [
     silkScreen: false,
     pricingType: 'custom',
     priceSqm: null,
-    picture: null,
+    picture: '/assets/catalog/glass/G19.png',
   },
 {
     code: 'G20',
@@ -1294,7 +1294,7 @@ export const glassList: Glass[] = [
     silkScreen: false,
     pricingType: 'custom',
     priceSqm: null,
-    picture: null,
+    picture: '/assets/catalog/glass/G20.png',
   },
 {
     code: 'G21',
@@ -1306,7 +1306,7 @@ export const glassList: Glass[] = [
     silkScreen: false,
     pricingType: 'custom',
     priceSqm: null,
-    picture: null,
+    picture: '/assets/catalog/glass/G21.png',
   },
 {
     code: 'G22',
@@ -1318,7 +1318,7 @@ export const glassList: Glass[] = [
     silkScreen: false,
     pricingType: 'custom',
     priceSqm: null,
-    picture: null,
+    picture: '/assets/catalog/glass/G22.png',
   },
 {
     code: 'G23',
@@ -1330,7 +1330,7 @@ export const glassList: Glass[] = [
     silkScreen: false,
     pricingType: 'custom',
     priceSqm: null,
-    picture: null,
+    picture: '/assets/catalog/glass/G23.png',
   },
 {
     code: 'G24',
@@ -1342,7 +1342,7 @@ export const glassList: Glass[] = [
     silkScreen: false,
     pricingType: 'custom',
     priceSqm: null,
-    picture: null,
+    picture: '/assets/catalog/glass/G24.png',
   },
 {
     code: 'G25',
@@ -1354,7 +1354,7 @@ export const glassList: Glass[] = [
     silkScreen: false,
     pricingType: 'custom',
     priceSqm: null,
-    picture: null,
+    picture: '/assets/catalog/glass/G25.png',
   },
 {
     code: 'G26',
@@ -1366,7 +1366,7 @@ export const glassList: Glass[] = [
     silkScreen: false,
     pricingType: 'custom',
     priceSqm: null,
-    picture: null,
+    picture: '/assets/catalog/glass/G26.png',
   },
 {
     code: 'G27',
@@ -1378,7 +1378,7 @@ export const glassList: Glass[] = [
     silkScreen: false,
     pricingType: 'custom',
     priceSqm: null,
-    picture: null,
+    picture: '/assets/catalog/glass/G27.png',
   },
 {
     code: 'G28',
@@ -1390,7 +1390,7 @@ export const glassList: Glass[] = [
     silkScreen: false,
     pricingType: 'custom',
     priceSqm: null,
-    picture: null,
+    picture: '/assets/catalog/glass/G28.png',
   },
 {
     code: 'G29',
@@ -1402,7 +1402,7 @@ export const glassList: Glass[] = [
     silkScreen: false,
     pricingType: 'custom',
     priceSqm: null,
-    picture: null,
+    picture: '/assets/catalog/glass/G29.png',
   },
 {
     code: 'G30',
@@ -1414,7 +1414,7 @@ export const glassList: Glass[] = [
     silkScreen: false,
     pricingType: 'custom',
     priceSqm: null,
-    picture: null,
+    picture: '/assets/catalog/glass/G30.png',
   },
 {
     code: 'G31',
@@ -1426,7 +1426,7 @@ export const glassList: Glass[] = [
     silkScreen: false,
     pricingType: 'custom',
     priceSqm: null,
-    picture: null,
+    picture: '/assets/catalog/glass/G31.png',
   },
 {
     code: 'G32',
@@ -1450,7 +1450,7 @@ export const glassList: Glass[] = [
     silkScreen: false,
     pricingType: 'standard',
     priceSqm: null,
-    picture: null,
+    picture: '/assets/catalog/glass/G33.png',
   },
 {
     code: 'G34',
@@ -1462,7 +1462,7 @@ export const glassList: Glass[] = [
     silkScreen: false,
     pricingType: 'custom',
     priceSqm: null,
-    picture: null,
+    picture: '/assets/catalog/glass/G34.png',
   },
 {
     code: 'G35',
@@ -1474,7 +1474,7 @@ export const glassList: Glass[] = [
     silkScreen: false,
     pricingType: 'custom',
     priceSqm: null,
-    picture: null,
+    picture: '/assets/catalog/glass/G35.png',
   },
 {
     code: 'G36',
@@ -1486,7 +1486,7 @@ export const glassList: Glass[] = [
     silkScreen: false,
     pricingType: 'standard',
     priceSqm: null,
-    picture: null,
+    picture: '/assets/catalog/glass/G36.png',
   },
 {
     code: 'G37',
@@ -1498,7 +1498,7 @@ export const glassList: Glass[] = [
     silkScreen: true,
     pricingType: 'custom',
     priceSqm: null,
-    picture: null,
+    picture: '/assets/catalog/glass/G37.png',
   },
 {
     code: 'G38',
@@ -1510,7 +1510,7 @@ export const glassList: Glass[] = [
     silkScreen: true,
     pricingType: 'custom',
     priceSqm: null,
-    picture: null,
+    picture: '/assets/catalog/glass/G38.png',
   },
 {
     code: 'G39',
@@ -1522,7 +1522,7 @@ export const glassList: Glass[] = [
     silkScreen: true,
     pricingType: 'custom',
     priceSqm: null,
-    picture: null,
+    picture: '/assets/catalog/glass/G39.png',
   },
 {
     code: 'G40',
@@ -1534,7 +1534,7 @@ export const glassList: Glass[] = [
     silkScreen: true,
     pricingType: 'custom',
     priceSqm: null,
-    picture: null,
+    picture: '/assets/catalog/glass/G40.png',
   },
 {
     code: 'G41',
@@ -1546,7 +1546,7 @@ export const glassList: Glass[] = [
     silkScreen: true,
     pricingType: 'custom',
     priceSqm: null,
-    picture: null,
+    picture: '/assets/catalog/glass/G41.png',
   },
 {
     code: 'G42',
@@ -1558,7 +1558,7 @@ export const glassList: Glass[] = [
     silkScreen: true,
     pricingType: 'custom',
     priceSqm: null,
-    picture: null,
+    picture: '/assets/catalog/glass/G42.png',
   },
 {
     code: 'G43',
@@ -1570,7 +1570,7 @@ export const glassList: Glass[] = [
     silkScreen: true,
     pricingType: 'custom',
     priceSqm: null,
-    picture: null,
+    picture: '/assets/catalog/glass/G43.png',
   },
 {
     code: 'G44',
@@ -1582,16 +1582,16 @@ export const glassList: Glass[] = [
     silkScreen: true,
     pricingType: 'custom',
     priceSqm: null,
-    picture: null,
+    picture: '/assets/catalog/glass/G44.png',
   }
-];
+] as const;
 
 
 // ---------------------------------------------------------------------------
 // 3. Leather Fillers (baseMaterial: Honeycomb Aluminum)
 // ---------------------------------------------------------------------------
 
-export const leatherList: Leather[] = [
+export const leatherList = [
 {
     code: 'H64144',
     name: 'Lychee grain PU',
@@ -1599,7 +1599,7 @@ export const leatherList: Leather[] = [
     thicknesses: [1],
     baseMaterial: 'Honeycomb Aluminum',
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/leather/H64144.png',
   },
 {
     code: 'H64148',
@@ -1608,7 +1608,7 @@ export const leatherList: Leather[] = [
     thicknesses: [1],
     baseMaterial: 'Honeycomb Aluminum',
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/leather/H64148.png',
   },
 {
     code: 'H64151',
@@ -1617,7 +1617,7 @@ export const leatherList: Leather[] = [
     thicknesses: [1],
     baseMaterial: 'Honeycomb Aluminum',
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/leather/H64151.png',
   },
 {
     code: 'H64160',
@@ -1626,7 +1626,7 @@ export const leatherList: Leather[] = [
     thicknesses: [1],
     baseMaterial: 'Honeycomb Aluminum',
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/leather/H64160.png',
   },
 {
     code: 'H76008',
@@ -1635,7 +1635,7 @@ export const leatherList: Leather[] = [
     thicknesses: [1],
     baseMaterial: 'Honeycomb Aluminum',
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/leather/H76008.png',
   },
 {
     code: 'H76009',
@@ -1644,7 +1644,7 @@ export const leatherList: Leather[] = [
     thicknesses: [1],
     baseMaterial: 'Honeycomb Aluminum',
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/leather/H76009.png',
   },
 {
     code: 'B76009',
@@ -1653,7 +1653,7 @@ export const leatherList: Leather[] = [
     thicknesses: [0.6],
     baseMaterial: 'Honeycomb Aluminum',
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/leather/B76009.png',
   },
 {
     code: 'H76014',
@@ -1662,7 +1662,7 @@ export const leatherList: Leather[] = [
     thicknesses: [1],
     baseMaterial: 'Honeycomb Aluminum',
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/leather/H76014.png',
   },
 {
     code: 'B76014',
@@ -1671,7 +1671,7 @@ export const leatherList: Leather[] = [
     thicknesses: [0.6],
     baseMaterial: 'Honeycomb Aluminum',
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/leather/B76014.png',
   },
 {
     code: 'H76015',
@@ -1680,7 +1680,7 @@ export const leatherList: Leather[] = [
     thicknesses: [1],
     baseMaterial: 'Honeycomb Aluminum',
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/leather/H76015.png',
   },
 {
     code: 'B76015',
@@ -1689,7 +1689,7 @@ export const leatherList: Leather[] = [
     thicknesses: [0.6],
     baseMaterial: 'Honeycomb Aluminum',
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/leather/B76015.png',
   },
 {
     code: 'H76016',
@@ -1698,7 +1698,7 @@ export const leatherList: Leather[] = [
     thicknesses: [1],
     baseMaterial: 'Honeycomb Aluminum',
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/leather/H76016.png',
   },
 {
     code: 'B76016',
@@ -1707,23 +1707,23 @@ export const leatherList: Leather[] = [
     thicknesses: [0.6],
     baseMaterial: 'Honeycomb Aluminum',
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/leather/B76016.png',
   }
-];
+] as const;
 
 
 // ---------------------------------------------------------------------------
 // 4. Wood Veneer Fillers
 // ---------------------------------------------------------------------------
 
-export const woodVeneerList: WoodVeneer[] = [
+export const woodVeneerList = [
 {
     code: 'O7AR',
     name: 'O7AR',
     type: 'woodVeneer',
     thicknesses: [8, 18, 25],
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/wood-veneer/O7AR.png',
   },
 {
     code: 'S154',
@@ -1731,7 +1731,7 @@ export const woodVeneerList: WoodVeneer[] = [
     type: 'woodVeneer',
     thicknesses: [12, 18, 25, 35],
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/wood-veneer/S154.png',
   },
 {
     code: 'FA84',
@@ -1739,7 +1739,7 @@ export const woodVeneerList: WoodVeneer[] = [
     type: 'woodVeneer',
     thicknesses: [18],
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/wood-veneer/FA84.png',
   },
 {
     code: 'LS14',
@@ -1747,7 +1747,7 @@ export const woodVeneerList: WoodVeneer[] = [
     type: 'woodVeneer',
     thicknesses: [12, 18, 25, 35],
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/wood-veneer/LS14.png',
   },
 {
     code: 'S133',
@@ -1755,7 +1755,7 @@ export const woodVeneerList: WoodVeneer[] = [
     type: 'woodVeneer',
     thicknesses: [18],
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/wood-veneer/S133.png',
   },
 {
     code: '75V',
@@ -1763,7 +1763,7 @@ export const woodVeneerList: WoodVeneer[] = [
     type: 'woodVeneer',
     thicknesses: [12, 18, 25],
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/wood-veneer/75V.png',
   },
 {
     code: 'F641',
@@ -1771,7 +1771,7 @@ export const woodVeneerList: WoodVeneer[] = [
     type: 'woodVeneer',
     thicknesses: [18],
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/wood-veneer/F641.png',
   },
 {
     code: 'FC18',
@@ -1779,7 +1779,7 @@ export const woodVeneerList: WoodVeneer[] = [
     type: 'woodVeneer',
     thicknesses: [18],
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/wood-veneer/FC18.png',
   },
 {
     code: '036W',
@@ -1787,7 +1787,7 @@ export const woodVeneerList: WoodVeneer[] = [
     type: 'woodVeneer',
     thicknesses: [8, 18, 25],
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/wood-veneer/036W.png',
   },
 {
     code: 'UA92',
@@ -1795,7 +1795,7 @@ export const woodVeneerList: WoodVeneer[] = [
     type: 'woodVeneer',
     thicknesses: [18],
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/wood-veneer/UA92.png',
   },
 {
     code: 'U727',
@@ -1803,7 +1803,7 @@ export const woodVeneerList: WoodVeneer[] = [
     type: 'woodVeneer',
     thicknesses: [12, 18, 25],
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/wood-veneer/U727.png',
   },
 {
     code: 'P204',
@@ -1811,7 +1811,7 @@ export const woodVeneerList: WoodVeneer[] = [
     type: 'woodVeneer',
     thicknesses: [18],
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/wood-veneer/P204.png',
   },
 {
     code: 'C351',
@@ -1819,7 +1819,7 @@ export const woodVeneerList: WoodVeneer[] = [
     type: 'woodVeneer',
     thicknesses: [8, 18, 25],
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/wood-veneer/C351.png',
   },
 {
     code: 'C028',
@@ -1827,7 +1827,7 @@ export const woodVeneerList: WoodVeneer[] = [
     type: 'woodVeneer',
     thicknesses: [8, 18, 25],
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/wood-veneer/C028.png',
   },
 {
     code: 'P205',
@@ -1835,16 +1835,16 @@ export const woodVeneerList: WoodVeneer[] = [
     type: 'woodVeneer',
     thicknesses: [18],
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/wood-veneer/P205.png',
   }
-];
+] as const;
 
 
 // ---------------------------------------------------------------------------
 // 5. Quartz Stone Fillers
 // ---------------------------------------------------------------------------
 
-export const quartzStoneList: QuartzStone[] = [
+export const quartzStoneList = [
 {
     code: 'QS-001',
     name: 'Silk blanco',
@@ -1852,7 +1852,7 @@ export const quartzStoneList: QuartzStone[] = [
     surface: '(Matte Silky Surface)',
     thicknesses: [4, 6],
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/quartz/QS-001.png',
   },
 {
     code: 'QS-002',
@@ -1861,7 +1861,7 @@ export const quartzStoneList: QuartzStone[] = [
     surface: '(Matte Silky Surface)',
     thicknesses: [4, 6],
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/quartz/QS-002.png',
   },
 {
     code: 'QS-003',
@@ -1870,7 +1870,7 @@ export const quartzStoneList: QuartzStone[] = [
     surface: '(Matte Silky Surface)',
     thicknesses: [4, 6],
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/quartz/QS-003.png',
   },
 {
     code: 'QS-004',
@@ -1879,7 +1879,7 @@ export const quartzStoneList: QuartzStone[] = [
     surface: '(Matte Silky Surface)',
     thicknesses: [4, 6],
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/quartz/QS-004.png',
   },
 {
     code: 'QS-005',
@@ -1888,7 +1888,7 @@ export const quartzStoneList: QuartzStone[] = [
     surface: '(Matte Silky Surface)',
     thicknesses: [4, 6],
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/quartz/QS-005.png',
   },
 {
     code: 'QS-006',
@@ -1897,7 +1897,7 @@ export const quartzStoneList: QuartzStone[] = [
     surface: '(Premium Blanco White - Grey Vein Natural Surface)',
     thicknesses: [4, 6],
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/quartz/QS-006.png',
   },
 {
     code: 'QS-007',
@@ -1906,7 +1906,7 @@ export const quartzStoneList: QuartzStone[] = [
     surface: '(Grey Natural Surface)',
     thicknesses: [4, 6],
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/quartz/QS-007.png',
   },
 {
     code: 'QS-008',
@@ -1915,7 +1915,7 @@ export const quartzStoneList: QuartzStone[] = [
     surface: '(Matte Silky Surface)',
     thicknesses: [4, 6],
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/quartz/QS-008.png',
   },
 {
     code: 'QS-009',
@@ -1924,7 +1924,7 @@ export const quartzStoneList: QuartzStone[] = [
     surface: '(Hammered Base Surface)',
     thicknesses: [4, 6],
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/quartz/QS-009.png',
   },
 {
     code: 'QS-010',
@@ -1933,7 +1933,7 @@ export const quartzStoneList: QuartzStone[] = [
     surface: '(Mocha Mixed Surface)',
     thicknesses: [4, 6],
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/quartz/QS-010.png',
   },
 {
     code: 'QS-011',
@@ -1942,7 +1942,7 @@ export const quartzStoneList: QuartzStone[] = [
     surface: '(Rainbow Natural Surface)',
     thicknesses: [6],
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/quartz/QS-011.png',
   },
 {
     code: 'QS-012',
@@ -1951,7 +1951,7 @@ export const quartzStoneList: QuartzStone[] = [
     surface: '(Pedrera Natural Surface)',
     thicknesses: [4, 6],
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/quartz/QS-012.png',
   },
 {
     code: 'QS-013',
@@ -1960,7 +1960,7 @@ export const quartzStoneList: QuartzStone[] = [
     surface: 'Matte',
     thicknesses: [6, 12],
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/quartz/QS-013.png',
   },
 {
     code: 'QS-014',
@@ -1969,7 +1969,7 @@ export const quartzStoneList: QuartzStone[] = [
     surface: 'Matte',
     thicknesses: [3.5],
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/quartz/QS-014.png',
   },
 {
     code: 'QS-015',
@@ -1978,7 +1978,7 @@ export const quartzStoneList: QuartzStone[] = [
     surface: 'Matte',
     thicknesses: [3.5],
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/quartz/QS-015.png',
   },
 {
     code: 'QS-016',
@@ -1987,7 +1987,7 @@ export const quartzStoneList: QuartzStone[] = [
     surface: 'Matte',
     thicknesses: [3.5],
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/quartz/QS-016.png',
   },
 {
     code: 'QS-017',
@@ -1996,7 +1996,7 @@ export const quartzStoneList: QuartzStone[] = [
     surface: 'Matte',
     thicknesses: [3.5, 6, 12],
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/quartz/QS-017.png',
   },
 {
     code: 'QS-018',
@@ -2005,7 +2005,7 @@ export const quartzStoneList: QuartzStone[] = [
     surface: 'Base Gloss',
     thicknesses: [6, 12],
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/quartz/QS-018.png',
   },
 {
     code: 'QS-019',
@@ -2014,7 +2014,7 @@ export const quartzStoneList: QuartzStone[] = [
     surface: 'Matte',
     thicknesses: [6, 12],
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/quartz/QS-019.png',
   },
 {
     code: 'QS-020',
@@ -2023,7 +2023,7 @@ export const quartzStoneList: QuartzStone[] = [
     surface: 'Matte',
     thicknesses: [3.5, 6, 12],
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/quartz/QS-020.png',
   },
 {
     code: 'QS-021',
@@ -2032,7 +2032,7 @@ export const quartzStoneList: QuartzStone[] = [
     surface: 'Matte',
     thicknesses: [6, 12],
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/quartz/QS-021.png',
   },
 {
     code: 'QS-022',
@@ -2041,7 +2041,7 @@ export const quartzStoneList: QuartzStone[] = [
     surface: 'Matte',
     thicknesses: [3.5],
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/quartz/QS-022.png',
   },
 {
     code: 'QS-023',
@@ -2050,341 +2050,341 @@ export const quartzStoneList: QuartzStone[] = [
     surface: 'Matte',
     thicknesses: [3.5],
     pricingType: 'custom',
-    picture: null,
+    picture: '/assets/catalog/quartz/QS-023.png',
   }
-];
+] as const;
 
 
 // ---------------------------------------------------------------------------
 // 6. Surface Finishes
 // ---------------------------------------------------------------------------
 
-export const surfaceFinishes: SurfaceFinishes = {
+export const surfaceFinishes = {
   anodize: [
 {
       code: 'YPF01',
       name: 'Fine sandblasted  matte black',
-      picture: null,
+      picture: '/assets/catalog/anodize/YPF01.png',
     },
 {
       code: 'YPC03',
       name: 'Fine sandblasted  silver-white',
-      picture: null,
+      picture: '/assets/catalog/anodize/YPC03.png',
     },
 {
       code: 'YPD02',
       name: 'Fine sandblasted  Roman gray',
-      picture: null,
+      picture: '/assets/catalog/anodize/YPD02.png',
     },
 {
       code: 'YLR07',
       name: 'Brushed iron gray',
-      picture: null,
+      picture: '/assets/catalog/anodize/YLR07.png',
     },
 {
       code: 'YLJ08',
       name: 'Brushed champagne',
-      picture: null,
+      picture: '/assets/catalog/anodize/YLJ08.png',
     },
 {
       code: 'YLN06',
       name: 'Brushed antique bronze',
-      picture: null,
+      picture: '/assets/catalog/anodize/YLN06.png',
     },
 {
       code: 'YPN03',
       name: 'Fine sandblasted  antique bronze',
-      picture: null,
+      picture: '/assets/catalog/anodize/YPN03.png',
     },
 {
       code: 'YPJ06',
       name: 'Fine sandblasted champagne',
-      picture: null,
+      picture: '/assets/catalog/anodize/YPJ06.png',
     },
 {
       code: 'YLF01',
       name: 'Brushed matte black',
-      picture: null,
+      picture: '/assets/catalog/anodize/YLF01.png',
     },
 {
       code: 'YLB09',
       name: 'Brushed light luxury gold',
-      picture: null,
+      picture: '/assets/catalog/anodize/YLB09.png',
     },
 {
       code: 'YLF03',
       name: 'Brushed bright black',
-      picture: null,
+      picture: '/assets/catalog/anodize/YLF03.png',
     },
 {
       code: 'YLC03',
       name: 'Brushed silver-white',
-      picture: null,
+      picture: '/assets/catalog/anodize/YLC03.png',
     },
 {
       code: 'YLD04',
       name: 'Brushed Roman gray',
-      picture: null,
+      picture: '/assets/catalog/anodize/YLD04.png',
     },
 {
       code: null,
       name: 'Oxidized Brushed Light Gold (SAGE Custom Gold)',
-      picture: null,
+      picture: '/assets/catalog/anodize/Oxidized_Brushed_Light_Gold_SAGE_Custom_Gold_.png',
     },
 {
       code: null,
       name: 'Oxidized Sandblasted Light Champagne 06 (Customer Color Code: C-32)',
-      picture: null,
+      picture: '/assets/catalog/anodize/Oxidized_Sandblasted_Light_Champagne_06_Customer_Color_Code_C-32_.png',
     }
   ],
   spraySoftTouch: [
 {
       code: 'PAE06',
       name: 'Aurora white',
-      picture: null,
+      picture: '/assets/catalog/spray-soft/PAE06.png',
     },
 {
       code: 'PAM02',
       name: 'Egyptian Beige',
-      picture: null,
+      picture: '/assets/catalog/spray-soft/PAM02.png',
     },
 {
       code: 'PAD21',
       name: 'London Gray',
-      picture: null,
+      picture: '/assets/catalog/spray-soft/PAD21.png',
     },
 {
       code: 'PAD30',
       name: 'Roman Gray',
-      picture: null,
+      picture: '/assets/catalog/spray-soft/PAD30.png',
     },
 {
       code: 'PAD26',
       name: 'Hamilton Steel',
-      picture: null,
+      picture: '/assets/catalog/spray-soft/PAD26.png',
     },
 {
       code: 'PAE09',
       name: 'Cors White',
-      picture: null,
+      picture: '/assets/catalog/spray-soft/PAE09.png',
     },
 {
       code: 'PAJ14',
       name: 'Ottawa Khaki',
-      picture: null,
+      picture: '/assets/catalog/spray-soft/PAJ14.png',
     },
 {
       code: 'PAI02',
       name: 'Lake Green',
-      picture: null,
+      picture: '/assets/catalog/spray-soft/PAI02.png',
     },
 {
       code: 'PAD22',
       name: 'Brazilian Cocoa',
-      picture: null,
+      picture: '/assets/catalog/spray-soft/PAD22.png',
     },
 {
       code: 'PAD28',
       name: 'Volcanic Ash',
-      picture: null,
+      picture: '/assets/catalog/spray-soft/PAD28.png',
     },
 {
       code: 'PAU03',
       name: 'Chepur Red',
-      picture: null,
+      picture: '/assets/catalog/spray-soft/PAU03.png',
     },
 {
       code: 'PAAA02',
       name: 'Moroccan Blue',
-      picture: null,
+      picture: '/assets/catalog/spray-soft/PAAA02.png',
     },
 {
       code: 'PAF09',
       name: 'Matte Black',
-      picture: null,
+      picture: '/assets/catalog/spray-soft/PAF09.png',
     }
   ],
   sprayMetallic: [
 {
       code: 'PAE02',
       name: 'High Gloss White',
-      picture: null,
+      picture: '/assets/catalog/spray-metallic/PAE02.png',
     },
 {
       code: 'PAF01',
       name: 'Matte Black',
-      picture: null,
+      picture: '/assets/catalog/spray-metallic/PAF01.png',
     },
 {
       code: 'PAB09',
       name: 'Light Luxury Gold',
-      picture: null,
+      picture: '/assets/catalog/spray-metallic/PAB09.png',
     },
 {
       code: 'PAN07',
       name: 'Light Luxury Copper',
-      picture: null,
+      picture: '/assets/catalog/spray-metallic/PAN07.png',
     },
 {
       code: 'PAJ04',
       name: 'Champagne Gold',
-      picture: null,
+      picture: '/assets/catalog/spray-metallic/PAJ04.png',
     },
 {
       code: 'PAD29',
       name: 'Hamilton Steel',
-      picture: null,
+      picture: '/assets/catalog/spray-metallic/PAD29.png',
     },
 {
       code: 'PAN04',
       name: 'Bronze Gold',
-      picture: null,
+      picture: '/assets/catalog/spray-metallic/PAN04.png',
     },
 {
       code: 'PAD16',
       name: 'Volcanic Ash Gray',
-      picture: null,
+      picture: '/assets/catalog/spray-metallic/PAD16.png',
     },
 {
       code: 'PAO01',
       name: 'Shiny Silver Khaki',
-      picture: null,
+      picture: '/assets/catalog/spray-metallic/PAO01.png',
     },
 {
       code: 'PAU01',
       name: 'China Red',
-      picture: null,
+      picture: '/assets/catalog/spray-metallic/PAU01.png',
     },
 {
       code: 'PAD18',
       name: 'Cream Beige',
-      picture: null,
+      picture: '/assets/catalog/spray-metallic/PAD18.png',
     },
 {
       code: 'PAD24',
       name: 'Light Cloud Gold',
-      picture: null,
+      picture: '/assets/catalog/spray-metallic/PAD24.png',
     },
 {
       code: 'PAN03',
       name: 'Antique Bronze Gold',
-      picture: null,
+      picture: '/assets/catalog/spray-metallic/PAN03.png',
     },
 {
       code: 'PAR01',
       name: 'Iron Gray',
-      picture: null,
+      picture: '/assets/catalog/spray-metallic/PAR01.png',
     },
 {
       code: 'PAD17',
       name: 'Graphite Gray',
-      picture: null,
+      picture: '/assets/catalog/spray-metallic/PAD17.png',
     },
 {
       code: 'PAD06',
       name: 'Cement Gray',
-      picture: null,
+      picture: '/assets/catalog/spray-metallic/PAD06.png',
     },
 {
       code: 'PAJ13',
       name: 'Champagne Pink Gold',
-      picture: null,
+      picture: '/assets/catalog/spray-metallic/PAJ13.png',
     },
 {
       code: 'PAJ05',
       name: 'Champagne Coffee Gold',
-      picture: null,
+      picture: '/assets/catalog/spray-metallic/PAJ05.png',
     },
 {
       code: 'PAJ02',
       name: 'Champagne Green Gold',
-      picture: null,
+      picture: '/assets/catalog/spray-metallic/PAJ02.png',
     },
 {
       code: 'PAD09',
       name: 'Titanium Gold Gray',
-      picture: null,
+      picture: '/assets/catalog/spray-metallic/PAD09.png',
     },
 {
       code: 'PAD10',
       name: 'Glacier Gray',
-      picture: null,
+      picture: '/assets/catalog/spray-metallic/PAD10.png',
     },
 {
       code: 'PAN05',
       name: 'Light Luxury Khaki',
-      picture: null,
+      picture: '/assets/catalog/spray-metallic/PAN05.png',
     },
 {
       code: 'PAAA01',
       name: 'Bruce Blue',
-      picture: null,
+      picture: '/assets/catalog/spray-metallic/PAAA01.png',
     },
 {
       code: 'PAY02',
       name: 'Cocoa Red',
-      picture: null,
+      picture: '/assets/catalog/spray-metallic/PAY02.png',
     },
 {
       code: 'PAD11',
       name: 'Alaska Gold',
-      picture: null,
+      picture: '/assets/catalog/spray-metallic/PAD11.png',
     },
 {
       code: 'PAD12',
       name: 'Beach Gold',
-      picture: null,
+      picture: '/assets/catalog/spray-metallic/PAD12.png',
     }
   ],
-};
+} as const;
 
 
 // ---------------------------------------------------------------------------
 // 7. Hardware (Hinges & Accessories)
 // ---------------------------------------------------------------------------
 
-export const hardwareList: Hardware[] = [
+export const hardwareList = [
 {
     code: 'HG-JL002',
     name: 'JL002-L/JL002-R Pivot Hinge',
     allowedColors: ['black', 'gray', 'gold'],
     pricePerPiece: 120,
-    picture: null,
+    picture: '/assets/catalog/hardware/HG-JL002.png',
   },
 {
     code: 'HG-JL006',
     name: 'JL006-L/JL006-R Pivot Hinge',
     allowedColors: ['black', 'gray', 'gold'],
     pricePerPiece: 120,
-    picture: null,
+    picture: '/assets/catalog/hardware/HG-JL006.png',
   },
 {
     code: 'HG-A21',
     name: 'Type A Pin Hinge with Plastic Cover (2.1)',
     allowedColors: ['black', 'gray', 'gold'],
     pricePerPiece: 220,
-    picture: null,
+    picture: '/assets/catalog/hardware/HG-A21.png',
   },
 {
     code: 'HG-SEN',
     name: 'Sensys 8638i Concealed Quick-assembly Hinge (Full Overlay/ Half Overlay/ Inset Hinge)',
     allowedColors: ['black', 'silver'],
     pricePerPiece: 78,
-    picture: null,
+    picture: '/assets/catalog/hardware/HG-SEN.png',
   },
 {
     code: 'HG-RYF2',
     name: 'RY-ZSJL-F2 Pin Hinge (Metal Cover)',
     allowedColors: ['black', 'grey', 'gold'],
     pricePerPiece: 220,
-    picture: null,
+    picture: '/assets/catalog/hardware/HG-RYF2.png',
   },
 {
     code: 'HG-RYG',
     name: 'RY-ZSJL-G Pin Hinge',
     allowedColors: ['black', 'grey', 'gold'],
     pricePerPiece: 220,
-    picture: null,
+    picture: '/assets/catalog/hardware/HG-RYG.png',
   },
 {
     code: null,
@@ -2440,14 +2440,14 @@ export const hardwareList: Hardware[] = [
     name: 'Bailong 110°Quick-assembly Hinge (Full Overlay/ Half Overlay/ Inset Hinge)',
     allowedColors: ['black', 'silver'],
     pricePerPiece: null,
-    picture: null,
+    picture: '/assets/catalog/hardware/HG-BLUM.png',
   },
 {
     code: 'HG-SLCQ',
     name: 'Salichi-CQ Concealed Wooden Door Hinge T12 (Half Overlay)',
     allowedColors: ['black', 'grey', 'gold'],
     pricePerPiece: null,
-    picture: null,
+    picture: '/assets/catalog/hardware/HG-SLCQ.png',
   },
 {
     code: null,
@@ -2470,687 +2470,687 @@ export const hardwareList: Hardware[] = [
     pricePerPiece: null,
     picture: null,
   }
-];
+] as const;
 
 
 // ---------------------------------------------------------------------------
 // 8. Handles
 // ---------------------------------------------------------------------------
 
-export const handleList: Handle[] = [
+export const handleList = [
 {
     code: 'GM047-3',
     name: 'GM047-3',
     surfaceFinishing: null,
     allowedColors: [],
-    picture: null,
+    picture: '/assets/catalog/handle/GM047-3.png',
   },
 {
     code: 'GM047-4',
     name: 'GM047-4',
     surfaceFinishing: null,
     allowedColors: [],
-    picture: null,
+    picture: '/assets/catalog/handle/GM047-4.png',
   },
 {
     code: 'GM047-5',
     name: 'GM047-5',
     surfaceFinishing: null,
     allowedColors: [],
-    picture: null,
+    picture: '/assets/catalog/handle/GM047-5.png',
   },
 {
     code: 'MK092-8A(slide door handle A)',
     name: 'MK092-8A(slide door handle A)',
     surfaceFinishing: null,
     allowedColors: [],
-    picture: null,
+    picture: '/assets/catalog/handle/MK092-8A_slide_door_handle_A_.png',
   },
 {
     code: 'GNN1629',
     name: '19板G型拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/GNN1629.png',
   },
 {
     code: 'GNN1630',
     name: '20板G型拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/GNN1630.png',
   },
 {
     code: 'GNN1631',
     name: '21板G型拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/GNN1631.png',
   },
 {
     code: 'EA284',
     name: '19板G型拉手 （带堵头）',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/EA284.png',
   },
 {
     code: 'EA285',
     name: '20板G型拉手 （带堵头）',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/EA285.png',
   },
 {
     code: 'EA286',
     name: '21板G型拉手 （带堵头）',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/EA286.png',
   },
 {
     code: 'EA233',
     name: '免防撞条 免拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/EA233.png',
   },
 {
     code: 'GNN2705-A',
     name: '免防撞条 免拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/GNN2705-A.png',
   },
 {
     code: 'EA1318',
     name: '不带防撞条 免拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/EA1318.png',
   },
 {
     code: 'EA232',
     name: '带防撞条 16板免拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/EA232.png',
   },
 {
     code: 'GNN2457',
     name: '不带防撞条 16板免拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/GNN2457.png',
   },
 {
     code: 'GNN2522',
     name: '不带防撞条 18板免拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/GNN2522.png',
   },
 {
     code: 'L100',
     name: 'C型免拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/L100.png',
   },
 {
     code: 'L101',
     name: 'L型免拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/L101.png',
   },
 {
     code: 'GNN817',
     name: '地柜柜体上拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/GNN817.png',
   },
 {
     code: 'GNN818',
     name: '地柜柜体中拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/GNN818.png',
   },
 {
     code: 'GNN878',
     name: '竖装免拉手铝材 （双侧）',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/GNN878.png',
   },
 {
     code: 'GNN1616',
     name: '竖装免拉手铝材 （单侧）',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/GNN1616.png',
   },
 {
     code: 'GNN2530',
     name: '双边带灯免拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/GNN2530.png',
   },
 {
     code: 'GNN2531',
     name: '单边带灯免拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/GNN2531.png',
   },
 {
     code: 'GNN2649-1',
     name: '水平L型免拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/GNN2649-1.png',
   },
 {
     code: 'GNN2649-2',
     name: '水平C型免拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/GNN2649-2.png',
   },
 {
     code: 'GNN2649-3',
     name: '高柜L型免拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/GNN2649-3.png',
   },
 {
     code: 'GNN2649-4',
     name: '高柜C型免拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/GNN2649-4.png',
   },
 {
     code: 'EM002',
     name: '明装拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/EM002.png',
   },
 {
     code: 'EA1214',
     name: '封边拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/EA1214.png',
   },
 {
     code: 'EM935',
     name: '明装拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/EM935.png',
   },
 {
     code: 'EM031',
     name: '明装拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/EM031.png',
   },
 {
     code: 'EM046',
     name: '明装拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/EM046.png',
   },
 {
     code: 'EM049',
     name: '明装拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/EM049.png',
   },
 {
     code: 'EM095',
     name: '明装拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/EM095.png',
   },
 {
     code: 'EM102',
     name: '明装拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/EM102.png',
   },
 {
     code: 'EM197',
     name: '明装拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/EM197.png',
   },
 {
     code: 'EM136',
     name: '明装拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/EM136.png',
   },
 {
     code: 'EM923',
     name: '明装拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/EM923.png',
   },
 {
     code: 'EM929',
     name: '明装拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/EM929.png',
   },
 {
     code: 'EM930',
     name: '明装拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/EM930.png',
   },
 {
     code: 'EM942A',
     name: '明装拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/EM942A.png',
   },
 {
     code: 'EM942B',
     name: '明装拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/EM942B.png',
   },
 {
     code: 'GNN204',
     name: '明装拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/GNN204.png',
   },
 {
     code: 'EA896',
     name: '明装拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/EA896.png',
   },
 {
     code: 'GNN1027',
     name: '明装拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/GNN1027.png',
   },
 {
     code: 'GNN1096',
     name: '明装拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/GNN1096.png',
   },
 {
     code: 'EA1205',
     name: '子母拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/EA1205.png',
   },
 {
     code: 'EA1216',
     name: '子母拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/EA1216.png',
   },
 {
     code: 'GNN1193',
     name: '子母拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/GNN1193.png',
   },
 {
     code: 'GNN1195',
     name: '子母拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/GNN1195.png',
   },
 {
     code: 'GNN2420',
     name: '子母拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/GNN2420.png',
   },
 {
     code: 'GNN2421',
     name: '子母拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/GNN2421.png',
   },
 {
     code: 'GNN2718',
     name: '子母拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/GNN2718.png',
   },
 {
     code: 'GNN2719',
     name: '子母拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/GNN2719.png',
   },
 {
     code: 'GNN1826',
     name: '封边拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/GNN1826.png',
   },
 {
     code: 'GNN1838',
     name: '拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/GNN1838.png',
   },
 {
     code: 'GNN2668-A',
     name: '拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/GNN2668-A.png',
   },
 {
     code: 'GNN678',
     name: '铣型定尺拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/GNN678.png',
   },
 {
     code: 'GNN1220',
     name: '铣型定尺拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/GNN1220.png',
   },
 {
     code: 'GNN1039',
     name: '铣型定尺拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/GNN1039.png',
   },
 {
     code: 'GNN782',
     name: '铣型定尺拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/GNN782.png',
   },
 {
     code: 'GNN783',
     name: '铣型定尺拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/GNN783.png',
   },
 {
     code: 'GNN677',
     name: '铣型定尺拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/GNN677.png',
   },
 {
     code: 'GNN2701-1-A',
     name: '铣型定尺拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/GNN2701-1-A.png',
   },
 {
     code: 'GNN749',
     name: '铣型定尺拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/GNN749.png',
   },
 {
     code: 'GNN306',
     name: '铣型定尺拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/GNN306.png',
   },
 {
     code: 'GNN1047',
     name: '铣型定尺拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/GNN1047.png',
   },
 {
     code: 'GNN2476',
     name: '铣型定尺拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/GNN2476.png',
   },
 {
     code: 'GNN2704',
     name: '铣型定尺拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/GNN2704.png',
   },
 {
     code: 'GNN1645',
     name: '铣型定尺拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/GNN1645.png',
   },
 {
     code: 'GNN2376-1',
     name: '斜口拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/GNN2376-1.png',
   },
 {
     code: 'GNN2376-2',
     name: '斜口拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/GNN2376-2.png',
   },
 {
     code: 'GNN2376-3',
     name: '斜口拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/GNN2376-3.png',
   },
 {
     code: 'GNN2667-1',
     name: '拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/GNN2667-1.png',
   },
 {
     code: 'GNN648',
     name: '拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/GNN648.png',
   },
 {
     code: 'GNN647',
     name: '拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/GNN647.png',
   },
 {
     code: 'EA126',
     name: '拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/EA126.png',
   },
 {
     code: 'EA130',
     name: '拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/EA130.png',
   },
 {
     code: 'EA132',
     name: '拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/EA132.png',
   },
 {
     code: 'GNN1033',
     name: '拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/GNN1033.png',
   },
 {
     code: 'EM932-A',
     name: '内嵌拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/EM932-A.png',
   },
 {
     code: 'EM987-A',
     name: '内嵌拉手',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/EM987-A.png',
   },
 {
     code: 'EM604',
     name: 'EM604',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/EM604.png',
   },
 {
     code: 'GNN2108',
     name: 'GNN2108',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/GNN2108.png',
   },
 {
     code: 'GNN1465',
     name: 'GNN1465',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/GNN1465.png',
   },
 {
     code: 'EM445B-430',
     name: 'EM445B-430',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/EM445B-430.png',
   },
 {
     code: 'EM918B-893',
     name: 'EM918B-893',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/EM918B-893.png',
   },
 {
     code: 'EM763B',
     name: 'EM763B',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/EM763B.png',
   },
 {
     code: 'CNN1538-585',
     name: 'CNN1538-585',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/CNN1538-585.png',
   },
 {
     code: 'EM885',
     name: 'EM885',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/EM885.png',
   },
 {
     code: 'CNN1539-585',
     name: 'CNN1539-585',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/CNN1539-585.png',
   },
 {
     code: 'EA1259',
     name: 'EA1259',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/EA1259.png',
   },
 {
     code: 'EA061A',
     name: 'EA061A',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/EA061A.png',
   },
 {
     code: 'EA159',
     name: 'EA159',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/EA159.png',
   },
 {
     code: 'EA146',
     name: 'EA146',
     surfaceFinishing: 'anodizing /  spray painting',
     allowedColors: ['color swatch colors'],
-    picture: null,
+    picture: '/assets/catalog/handle/EA146.png',
   }
-];
+] as const;
 
 
 // ---------------------------------------------------------------------------
@@ -3162,7 +3162,7 @@ export const fillerMap = {
   leather: leatherList,
   woodVeneer: woodVeneerList,
   quartzStone: quartzStoneList,
-};
+} as const;
 
 
 // ---------------------------------------------------------------------------

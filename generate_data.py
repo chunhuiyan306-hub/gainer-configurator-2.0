@@ -1,12 +1,144 @@
 """
-Data processing script: reads raw_data.json (extracted from the Excel workbook)
-and produces a complete, structured data.ts for the Gainer Door Configurator.
+Data processing script: reads the Excel workbook (318 door information) and
+extracts embedded images into public/assets/catalog/, then writes src/data.ts.
+Override path: set env GAINER_EXCEL to the .xlsx file.
 """
 
-import json, re, textwrap
+import os
+import re
+import textwrap
+from pathlib import Path
 
-with open("raw_data.json", "r", encoding="utf-8") as f:
-    raw = json.load(f)
+import openpyxl
+
+# ---------------------------------------------------------------------------
+# Resolve workbook path
+# ---------------------------------------------------------------------------
+
+def _resolve_xlsx() -> Path:
+    env = os.environ.get("GAINER_EXCEL")
+    if env:
+        p = Path(env).expanduser().resolve()
+        if p.is_file():
+            return p
+        raise FileNotFoundError(f"GAINER_EXCEL is not a file: {p}")
+    here = Path(__file__).resolve().parent
+    candidates = [
+        here / "318 door information(3).xlsx",
+        Path.home() / "Desktop" / "318 door information(3).xlsx",
+    ]
+    for p in candidates:
+        if p.is_file():
+            return p
+    raise FileNotFoundError(
+        "Place '318 door information(3).xlsx' next to generate_data.py, your Desktop, "
+        "or set GAINER_EXCEL to the full path."
+    )
+
+
+XLSX_PATH = _resolve_xlsx()
+PROJECT_ROOT = Path(__file__).resolve().parent
+CATALOG_DIR = PROJECT_ROOT / "public" / "assets" / "catalog"
+
+
+def _slug(s) -> str:
+    s = str(s).strip() if s is not None else "x"
+    return re.sub(r"[^a-zA-Z0-9._-]+", "_", s)[:100] or "x"
+
+
+def _best_image_for_row(ws, excel_row: int, prefer_cols: list[int]):
+    """Pick one image anchored on excel_row; prefer columns in order, else smallest col."""
+    found = []
+    for img in ws._images or []:
+        fr = img.anchor._from
+        if fr.row + 1 != excel_row:
+            continue
+        col = fr.col + 1
+        found.append((col, img))
+    if not found:
+        return None
+    for pc in prefer_cols:
+        for col, img in found:
+            if col == pc:
+                return img
+    found.sort(key=lambda x: x[0])
+    return found[0][1]
+
+
+def _save_catalog_image(img, subdir: str, basename: str) -> str:
+    ext = (img.format or "png").lower()
+    if ext == "jpeg":
+        ext = "jpg"
+    safe = _slug(basename)
+    out_dir = CATALOG_DIR / subdir
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_path = out_dir / f"{safe}.{ext}"
+    out_path.write_bytes(img._data())
+    return f"/assets/catalog/{subdir}/{safe}.{ext}"
+
+
+def _extract_row_images(ws, subdir: str, code_col_1based: int, prefer_cols: list[int], min_row: int = 2):
+    """Map product code (str) -> public URL."""
+    mapping = {}
+    for r in range(min_row, ws.max_row + 1):
+        code = ws.cell(r, code_col_1based).value
+        if code is None or str(code).strip() in ("", "\\"):
+            continue
+        key = str(code).strip()
+        im = _best_image_for_row(ws, r, prefer_cols)
+        if not im:
+            continue
+        mapping[key] = _save_catalog_image(im, subdir, key)
+    return mapping
+
+
+def _extract_color_sheet(ws, subdir: str, min_row: int = 2):
+    """Anodize / spray sheets: code col B, picture col C; null code uses slug(name)."""
+    mapping = {}
+    for r in range(min_row, ws.max_row + 1):
+        name = ws.cell(r, 1).value
+        code = ws.cell(r, 2).value
+        if not name and not code:
+            continue
+        im = _best_image_for_row(ws, r, [3, 1, 2])
+        if not im:
+            continue
+        key = str(code).strip() if code else _slug(name)
+        url = _save_catalog_image(im, subdir, key)
+        if code:
+            mapping[str(code).strip()] = url
+        if name:
+            mapping[_slug(name)] = url
+    return mapping
+
+
+# ---------------------------------------------------------------------------
+# Load workbook + build raw row dict (same shape as former raw_data.json)
+# ---------------------------------------------------------------------------
+
+wb = openpyxl.load_workbook(str(XLSX_PATH), data_only=True)
+
+
+def _sheet_rows(name: str):
+    ws = wb[name]
+    return [list(row) for row in ws.iter_rows(values_only=True)]
+
+
+print(f"Loading: {XLSX_PATH}")
+CATALOG_DIR.mkdir(parents=True, exist_ok=True)
+
+frame_pics = _extract_row_images(wb["cabinet door"], "cabinet-door", 1, [3, 2, 4, 5, 6])
+glass_pics = _extract_row_images(wb["glass"], "glass", 2, [3, 2])
+leather_pics = _extract_row_images(wb["leather"], "leather", 1, [3, 2])
+wood_pics = _extract_row_images(wb["wood veneer"], "wood-veneer", 2, [1, 2])
+quartz_pics = _extract_row_images(wb["quartz stone"], "quartz", 3, [2, 3])
+anod_pics = _extract_color_sheet(wb["Anodized Color"], "anodize")
+soft_pics = _extract_color_sheet(wb["Sprayed Soft-Touch Color"], "spray-soft")
+metal_pics = _extract_color_sheet(wb["Sprayed Metallic Color"], "spray-metallic")
+hardware_pics = _extract_row_images(wb["hardware"], "hardware", 4, [2, 1, 3])
+handle_pics = _extract_row_images(wb["handle"], "handle", 1, [2, 3])
+
+raw = {name: _sheet_rows(name) for name in wb.sheetnames}
 
 # ---------------------------------------------------------------------------
 # helpers
@@ -14,6 +146,9 @@ with open("raw_data.json", "r", encoding="utf-8") as f:
 
 def parse_thickness(t: str):
     """'3/4/5/8' -> [3,4,5,8]  ;  '4+4/5+5' -> [8,10]  ;  '4+4/4+5/5+5' -> [8,9,10]"""
+    if t is None or t is False:
+        return []
+    t = str(t)
     if not t or t.strip() in ("\\", "", "None"):
         return []
     parts = [p.strip() for p in t.replace("mm", "").split("/") if p.strip() and p.strip() != "\\"]
@@ -155,6 +290,16 @@ def parse_hardware_colors(c: str):
     return [x.strip().lower() for x in c.replace("/", ",").split(",") if x.strip()]
 
 
+def _surface_pic(pic_map: dict, code, name):
+    if code:
+        u = pic_map.get(str(code).strip())
+        if u:
+            return u
+    if name:
+        return pic_map.get(_slug(str(name).replace("\n", " ").strip()))
+    return None
+
+
 def to_ts_val(v):
     if v is None:
         return "null"
@@ -225,7 +370,7 @@ for i, row in enumerate(cab_rows[1:], start=1):
         "matchedHandle": matched_handle,
         "matchedHardware": matched_hardware,
         "hardwareColors": hw_colors,
-        "picture": None,
+        "picture": frame_pics.get(str(code).strip()) if code else None,
     })
 
 # ---------------------------------------------------------------------------
@@ -259,7 +404,7 @@ for row in raw["glass"][1:]:
         "silkScreen": True if silk_screen and silk_screen.lower() == "yes" else False,
         "pricingType": pricing_type,
         "priceSqm": None,
-        "picture": None,
+        "picture": glass_pics.get(str(code).strip()),
     })
 
 # ---------------------------------------------------------------------------
@@ -290,7 +435,7 @@ for row in raw["leather"][1:]:
         "thicknesses": thicknesses,
         "baseMaterial": "Honeycomb Aluminum",
         "pricingType": "custom",
-        "picture": None,
+        "picture": leather_pics.get(str(code).strip()),
     })
 
 # ---------------------------------------------------------------------------
@@ -312,7 +457,7 @@ for row in raw["wood veneer"][1:]:
         "type": "woodVeneer",
         "thicknesses": thicknesses,
         "pricingType": "custom",
-        "picture": None,
+        "picture": wood_pics.get(str(code).strip()),
     })
 
 # ---------------------------------------------------------------------------
@@ -337,7 +482,7 @@ for row in raw["quartz stone"][1:]:
         "surface": surface,
         "thicknesses": thicknesses,
         "pricingType": "custom",
-        "picture": None,
+        "picture": quartz_pics.get(str(code).strip()),
     })
 
 # ---------------------------------------------------------------------------
@@ -352,10 +497,11 @@ for row in raw["Anodized Color"][1:]:
     code = row[1] if len(row) > 1 else None
     if not name:
         continue
+    nm = name.replace("\n", " ").strip()
     anodize_colors.append({
         "code": code,
-        "name": name.replace("\n", " ").strip(),
-        "picture": None,
+        "name": nm,
+        "picture": _surface_pic(anod_pics, code, nm),
     })
 
 spray_soft_colors = []
@@ -367,10 +513,11 @@ for row in raw["Sprayed Soft-Touch Color"][1:]:
     code = row[1] if len(row) > 1 else None
     if not name:
         continue
+    nm = name.replace("\n", " ").strip()
     spray_soft_colors.append({
         "code": code,
-        "name": name.replace("\n", " ").strip(),
-        "picture": None,
+        "name": nm,
+        "picture": _surface_pic(soft_pics, code, nm),
     })
 
 spray_metallic_colors = []
@@ -382,10 +529,11 @@ for row in raw["Sprayed Metallic Color"][1:]:
     code = row[1] if len(row) > 1 else None
     if not name:
         continue
+    nm = name.replace("\n", " ").strip()
     spray_metallic_colors.append({
         "code": code,
-        "name": name.replace("\n", " ").strip(),
-        "picture": None,
+        "name": nm,
+        "picture": _surface_pic(metal_pics, code, nm),
     })
 
 # ---------------------------------------------------------------------------
@@ -418,7 +566,7 @@ for row in raw["hardware"][1:]:
         "name": name.replace("\n", " ").strip(),
         "allowedColors": colors,
         "pricePerPiece": price,
-        "picture": None,
+        "picture": hardware_pics.get(str(code).strip()) if code else None,
     })
 
 # ---------------------------------------------------------------------------
@@ -442,7 +590,7 @@ for row in raw["handle"][1:]:
         "name": name or code,
         "surfaceFinishing": surface,
         "allowedColors": ["color swatch colors"] if color == "color swatch colors" else ([color] if color else []),
-        "picture": None,
+        "picture": handle_pics.get(str(code).strip()),
     })
 
 
@@ -511,16 +659,16 @@ export interface SizeLimits {
 export interface Frame {
   code: string;
   doorType: string;
-  allowedFillers: string[];
-  standardFillers: string[];
-  fillerThicknessLimit: number[];
-  allowedFinishing: string[];
-  specificColors: string[] | null;
+  allowedFillers: readonly string[];
+  standardFillers: readonly string[];
+  fillerThicknessLimit: readonly number[];
+  allowedFinishing: readonly string[];
+  specificColors: readonly string[] | null;
   sizeLimits: SizeLimits;
   doorThickness: number | null;
   matchedHandle: string | null;
   matchedHardware: string | null;
-  hardwareColors: string[];
+  hardwareColors: readonly string[];
   picture: string | null;
 }
 
@@ -530,7 +678,7 @@ export interface Glass {
   type: 'glass';
   craft: string | null;
   craftCode: string | null;
-  thicknesses: number[];
+  thicknesses: readonly number[];
   silkScreen: boolean;
   pricingType: 'standard' | 'custom';
   priceSqm: number | null;
@@ -541,7 +689,7 @@ export interface Leather {
   code: string;
   name: string;
   type: 'leather';
-  thicknesses: number[];
+  thicknesses: readonly number[];
   baseMaterial: 'Honeycomb Aluminum';
   pricingType: 'custom';
   picture: string | null;
@@ -551,7 +699,7 @@ export interface WoodVeneer {
   code: string;
   name: string;
   type: 'woodVeneer';
-  thicknesses: number[];
+  thicknesses: readonly number[];
   pricingType: 'custom';
   picture: string | null;
 }
@@ -561,7 +709,7 @@ export interface QuartzStone {
   name: string;
   type: 'quartzStone';
   surface: string | null;
-  thicknesses: number[];
+  thicknesses: readonly number[];
   pricingType: 'custom';
   picture: string | null;
 }
@@ -583,7 +731,7 @@ export interface SurfaceFinishes {
 export interface Hardware {
   code: string | null;
   name: string;
-  allowedColors: string[];
+  allowedColors: readonly string[];
   pricePerPiece: number | null;
   picture: string | null;
 }
@@ -592,7 +740,7 @@ export interface Handle {
   code: string;
   name: string;
   surfaceFinishing: string | null;
-  allowedColors: string[];
+  allowedColors: readonly string[];
   picture: string | null;
 }
 """)

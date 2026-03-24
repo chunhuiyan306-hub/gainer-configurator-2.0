@@ -1,38 +1,45 @@
 import { useShallow } from 'zustand/shallow';
 import { useConfiguratorStore } from '../useConfiguratorStore';
+import { msg } from '../translations';
 
 export function PriceBar() {
-  const { width, height, frame, filler, base } = useConfiguratorStore(
+  const { width, height, frame, filler, base, uiLocale } = useConfiguratorStore(
     useShallow((s) => ({
       width: s.width,
       height: s.height,
       frame: s.selectedFrameCode,
       filler: s.selectedFillerCode,
       base: s.baseMaterial,
+      uiLocale: s.uiLocale,
     })),
   );
 
   const getPriceBreakdown = useConfiguratorStore((s) => s.getPriceBreakdown);
   const getHingeCalculation = useConfiguratorStore((s) => s.getHingeCalculation);
+  const getConfigurationSku = useConfiguratorStore((s) => s.getConfigurationSku);
 
+  const t = msg(uiLocale);
   const price = getPriceBreakdown();
   const hinge = getHingeCalculation();
+  const sku = getConfigurationSku();
 
   const areaText =
     width != null && height != null && width > 0 && height > 0
       ? `${((width / 1000) * (height / 1000)).toFixed(2)} m²`
       : null;
 
+  const currencyLocale = uiLocale === 'zh' ? 'zh-CN' : 'en-US';
+
   const totalDisplay =
     price.total !== null
-      ? `¥${price.total.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+      ? `¥${price.total.toLocaleString(currencyLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
       : '—';
 
   let hingeLabel: string;
   if (hinge.usePivot) {
-    hingeLabel = '天地轴（Pivot）';
+    hingeLabel = t.hingePivot;
   } else if (hinge.qty > 0) {
-    hingeLabel = `${hinge.qty} 只`;
+    hingeLabel = t.hingeEach(hinge.qty);
   } else {
     hingeLabel = '—';
   }
@@ -72,12 +79,36 @@ export function PriceBar() {
             color: 'var(--text-secondary)',
           }}
         >
-          铰链数量
+          {t.hingeQtyLabel}
         </p>
         <p style={{ margin: '2px 0 0', fontSize: 17, fontWeight: 600 }}>{hingeLabel}</p>
+        <p
+          style={{
+            margin: '8px 0 0',
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: '0.06em',
+            textTransform: 'uppercase',
+            color: 'var(--text-secondary)',
+          }}
+        >
+          {t.skuLabel}
+        </p>
+        <p
+          style={{
+            margin: '2px 0 0',
+            fontSize: 13,
+            fontWeight: 500,
+            fontFamily: 'ui-monospace, monospace',
+            wordBreak: 'break-all',
+            color: sku ? 'var(--text)' : 'var(--text-secondary)',
+          }}
+        >
+          {sku ?? t.skuIncomplete}
+        </p>
         {areaText ? (
           <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--text-secondary)' }}>
-            展开面积 {areaText}
+            {t.areaLabel(areaText)}
             {base ? ` · ${base}` : ''}
           </p>
         ) : base ? (
@@ -95,7 +126,7 @@ export function PriceBar() {
             color: 'var(--text-secondary)',
           }}
         >
-          合计
+          {t.totalLabel}
         </p>
         <p style={{ margin: '2px 0 0', fontSize: 22, fontWeight: 600, letterSpacing: '-0.02em' }}>
           {totalDisplay}
@@ -123,7 +154,7 @@ export function PriceBar() {
               marginLeft: 'auto',
             }}
           >
-            价格计算中包含定制项，需联系客服
+            {t.customPricingNote}
           </p>
         ) : null}
       </div>

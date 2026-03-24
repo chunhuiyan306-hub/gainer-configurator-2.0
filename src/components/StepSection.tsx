@@ -2,11 +2,13 @@ import type { ReactNode } from 'react';
 
 export function StepSection({
   step,
+  stepPrefix = 'Step',
   title,
   subtitle,
   children,
 }: {
   step: number;
+  stepPrefix?: string;
   title: string;
   subtitle?: string;
   children: ReactNode;
@@ -29,7 +31,7 @@ export function StepSection({
             color: 'var(--text-secondary)',
           }}
         >
-          Step {step}
+          {stepPrefix} {step}
         </p>
         <h2
           style={{
