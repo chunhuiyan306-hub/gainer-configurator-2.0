@@ -13,12 +13,14 @@ const M = {
     language: '语言',
     stepPrefix: '步骤',
 
-    stepDimensionsTitle: '门板尺寸',
-    stepDimensionsSubtitle: '请先输入宽度 W 与高度 H（毫米）。后续门框与填充物将按此尺寸校验。',
+    stepDimensionsTitle: '门板尺寸与数量',
+    stepDimensionsSubtitle: '请先输入宽度 W 与高度 H（毫米），并填写数量。后续门框与填充物将按此尺寸校验。',
     widthLabel: '宽度 W (mm)',
     heightLabel: '高度 H (mm)',
     widthPlaceholder: '例如 600',
     heightPlaceholder: '例如 2200',
+    qtyLabel: '数量',
+    qtyUnit: '扇',
 
     stepFrameTitle: '门框型材',
     stepFrameSubtitle: '不符合当前 W×H 的门框已置灰，且不可选择。',
@@ -71,6 +73,18 @@ const M = {
     handleColorLabel: '拉手颜色',
     handleColorHint:
       '与门框表面处理接近的颜色会自动选中；不支持的颜色已置灰。',
+
+    addToCart: '加入订单',
+    addToCartSuccess: '已加入订单，可继续配置下一款',
+    cartTitle: '订单列表',
+    cartEmpty: '暂无订单项',
+    cartTotal: '订单总计',
+    cartClearAll: '清空全部',
+    cartRemove: '移除',
+    cartUnitPrice: '单价',
+    cartQty: '数量',
+    cartItemCount: (n: number) => `${n} 项`,
+    configChips: '当前配置',
 
     disabledMismatch: '与当前门框参数不匹配',
 
@@ -138,12 +152,14 @@ const M = {
     language: 'Language',
     stepPrefix: 'Step',
 
-    stepDimensionsTitle: 'Door size',
-    stepDimensionsSubtitle: 'Enter width W and height H in millimeters first. Frame and filler options validate against these dimensions.',
+    stepDimensionsTitle: 'Door size & quantity',
+    stepDimensionsSubtitle: 'Enter width W and height H in millimeters, and the quantity needed. Frame and filler options validate against these dimensions.',
     widthLabel: 'Width W (mm)',
     heightLabel: 'Height H (mm)',
     widthPlaceholder: 'e.g. 600',
     heightPlaceholder: 'e.g. 2200',
+    qtyLabel: 'Quantity',
+    qtyUnit: 'pcs',
 
     stepFrameTitle: 'Frame profile',
     stepFrameSubtitle: 'Frames that do not fit the current W×H are dimmed and cannot be selected.',
@@ -196,6 +212,18 @@ const M = {
     handleColorLabel: 'Handle color',
     handleColorHint:
       'Color is auto-matched to surface finish when supported; unsupported swatches are dimmed.',
+
+    addToCart: 'Add to order',
+    addToCartSuccess: 'Added to order — continue configuring the next door',
+    cartTitle: 'Order list',
+    cartEmpty: 'No items in order',
+    cartTotal: 'Order total',
+    cartClearAll: 'Clear all',
+    cartRemove: 'Remove',
+    cartUnitPrice: 'Unit price',
+    cartQty: 'Qty',
+    cartItemCount: (n: number) => `${n} item${n !== 1 ? 's' : ''}`,
+    configChips: 'Current config',
 
     disabledMismatch: 'Does not match current frame constraints',
 

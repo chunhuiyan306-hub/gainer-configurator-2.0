@@ -114,6 +114,16 @@ export interface QuotationSnapshot {
   summary: string;
 }
 
+export interface CartItem {
+  id: string;
+  generatedSku: string;
+  fullConfigSku: string | null;
+  quantity: number;
+  unitTotal: number | null;
+  lineTotal: number | null;
+  snapshot: QuotationSnapshot;
+}
+
 // =============================================================================
 // Standard Glass Pricing Map (frame code → sqm price by glass tier)
 //
@@ -168,9 +178,10 @@ function resolveStandardGlassPrice(
 interface ConfiguratorState {
   uiLocale: UiLocale;
 
-  // --- Step 1: Dimensions ---
+  // --- Step 1: Dimensions + Quantity ---
   width: number | null;
   height: number | null;
+  quantity: number;
 
   // --- Step 2: Frame ---
   selectedFrameCode: string | null;
@@ -193,6 +204,10 @@ interface ConfiguratorState {
   selectedHingeColor: string | null;
 
   configurationConfirmed: boolean;
+
+  // --- Cart ---
+  cartItems: CartItem[];
+  cartOpen: boolean;
 }
 
 // =============================================================================
@@ -202,6 +217,7 @@ interface ConfiguratorState {
 interface ConfiguratorActions {
   setUiLocale: (locale: UiLocale) => void;
   setDimensions: (w: number | null, h: number | null) => void;
+  setQuantity: (qty: number) => void;
   selectFrame: (code: string | null) => void;
   selectFinishCategory: (category: FinishCategory | null) => void;
   selectFinishColor: (code: string | null) => void;
@@ -213,6 +229,11 @@ interface ConfiguratorActions {
   reset: () => void;
   resetConfiguration: () => void;
   confirmConfiguration: () => void;
+  addToCart: () => boolean;
+  removeFromCart: (id: string) => void;
+  updateCartItemQty: (id: string, qty: number) => void;
+  clearCart: () => void;
+  setCartOpen: (open: boolean) => void;
 }
 
 // =============================================================================
@@ -234,6 +255,7 @@ interface ConfiguratorSelectors {
   getGeneratedSku: () => string;
   getHandleColorOptions: () => HandleColorOption[];
   getQuotationSnapshot: () => QuotationSnapshot;
+  getCartTotal: () => { count: number; total: number | null };
 }
 
 // Combine into full store type
@@ -243,10 +265,29 @@ export type ConfiguratorStore = ConfiguratorState & ConfiguratorActions & Config
 // Initial State
 // =============================================================================
 
+const CART_STORAGE_KEY = 'gainer-cart';
+
+function loadCart(): CartItem[] {
+  try {
+    const raw = localStorage.getItem(CART_STORAGE_KEY);
+    if (raw) { const arr = JSON.parse(raw); if (Array.isArray(arr)) return arr; }
+  } catch { /* ignore */ }
+  return [];
+}
+
+function saveCart(items: CartItem[]) {
+  try { localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items)); } catch { /* ignore */ }
+}
+
+function cartItemId(): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
 const initialState: ConfiguratorState = {
   uiLocale: readStoredLocale(),
   width: null,
   height: null,
+  quantity: 1,
   selectedFrameCode: null,
   selectedFinishCategory: null,
   selectedFinishColorCode: null,
@@ -258,6 +299,8 @@ const initialState: ConfiguratorState = {
   selectedHandleColor: null,
   selectedHingeColor: null,
   configurationConfirmed: false,
+  cartItems: loadCart(),
+  cartOpen: false,
 };
 
 // =============================================================================
@@ -523,6 +566,13 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
       },
 
       // =====================================================================
+      // ACTION: setQuantity
+      // =====================================================================
+      setQuantity: (qty) => {
+        set({ quantity: Math.max(1, Math.floor(qty)) }, undefined, 'setQuantity');
+      },
+
+      // =====================================================================
       // ACTION: selectFrame
       // Selects a frame and CASCADE CLEARS all downstream state.
       // =====================================================================
@@ -690,16 +740,16 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
       // ACTION: reset
       // =====================================================================
       reset: () => {
-        const locale = get().uiLocale;
-        set({ ...initialState, uiLocale: locale }, undefined, 'reset');
+        const { uiLocale, cartItems } = get();
+        set({ ...initialState, uiLocale, cartItems, cartOpen: false }, undefined, 'reset');
       },
 
       // =====================================================================
       // ACTION: resetConfiguration — alias for full reset (keeps language)
       // =====================================================================
       resetConfiguration: () => {
-        const locale = get().uiLocale;
-        set({ ...initialState, uiLocale: locale }, undefined, 'resetConfiguration');
+        const { uiLocale, cartItems } = get();
+        set({ ...initialState, uiLocale, cartItems, cartOpen: false }, undefined, 'resetConfiguration');
       },
 
       // =====================================================================
@@ -708,6 +758,73 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
       confirmConfiguration: () => {
         if (get().getValidationErrors().length > 0) return;
         set({ configurationConfirmed: true }, undefined, 'confirmConfiguration');
+      },
+
+      // =====================================================================
+      // ACTION: addToCart — snapshot current config + qty, add to cart, reset form
+      // =====================================================================
+      addToCart: () => {
+        const s = get();
+        if (s.getValidationErrors().length > 0) return false;
+        const snap = s.getQuotationSnapshot();
+        const qty = s.quantity;
+        const item: CartItem = {
+          id: cartItemId(),
+          generatedSku: snap.generatedSku,
+          fullConfigSku: snap.fullConfigSku,
+          quantity: qty,
+          unitTotal: snap.total,
+          lineTotal: snap.total !== null ? snap.total * qty : null,
+          snapshot: snap,
+        };
+        const next = [...s.cartItems, item];
+        saveCart(next);
+        const locale = s.uiLocale;
+        set({
+          ...initialState,
+          uiLocale: locale,
+          cartItems: next,
+          cartOpen: false,
+        }, undefined, 'addToCart');
+        return true;
+      },
+
+      // =====================================================================
+      // ACTION: removeFromCart
+      // =====================================================================
+      removeFromCart: (id) => {
+        const next = get().cartItems.filter((i) => i.id !== id);
+        saveCart(next);
+        set({ cartItems: next }, undefined, 'removeFromCart');
+      },
+
+      // =====================================================================
+      // ACTION: updateCartItemQty
+      // =====================================================================
+      updateCartItemQty: (id, qty) => {
+        const clamped = Math.max(1, Math.floor(qty));
+        const next = get().cartItems.map((i) =>
+          i.id === id
+            ? { ...i, quantity: clamped, lineTotal: i.unitTotal !== null ? i.unitTotal * clamped : null }
+            : i,
+        );
+        saveCart(next);
+        set({ cartItems: next }, undefined, 'updateCartItemQty');
+      },
+
+      // =====================================================================
+      // ACTION: clearCart
+      // =====================================================================
+      clearCart: () => {
+        saveCart([]);
+        set({ cartItems: [] }, undefined, 'clearCart');
+      },
+
+      // =====================================================================
+      // ACTION: setCartOpen
+      // =====================================================================
+      setCartOpen: (open) => {
+        set({ cartOpen: open }, undefined, 'setCartOpen');
       },
 
       // =====================================================================
@@ -1148,6 +1265,24 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
         const handle = handleList.find((h) => h.code === get().selectedHandleCode);
         if (!frame?.matchedHandle || !handle) return [];
         return handleColorOptionRows(handle, frame);
+      },
+
+      // =====================================================================
+      // SELECTOR: getQuotationSnapshot
+      // =====================================================================
+      // =====================================================================
+      // SELECTOR: getCartTotal
+      // =====================================================================
+      getCartTotal: () => {
+        const items = get().cartItems;
+        let total: number | null = 0;
+        let count = 0;
+        for (const item of items) {
+          count += item.quantity;
+          if (item.lineTotal !== null && total !== null) total += item.lineTotal;
+          else total = null;
+        }
+        return { count, total };
       },
 
       // =====================================================================

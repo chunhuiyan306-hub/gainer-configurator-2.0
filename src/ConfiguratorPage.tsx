@@ -5,6 +5,7 @@ import { SelectableTile } from './components/SelectableTile';
 import { MediaThumb } from './components/MediaThumb';
 import { PriceBar } from './components/PriceBar';
 import { QuotationSheet } from './components/QuotationSheet';
+import { CartDrawer } from './components/CartDrawer';
 import { msg, type UiLocale } from './translations';
 
 function finishColorId(category: FinishCategory, code: string | null, name: string) {
@@ -32,6 +33,7 @@ export function ConfiguratorPage() {
 
   const width = useConfiguratorStore((s) => s.width);
   const height = useConfiguratorStore((s) => s.height);
+  const quantity = useConfiguratorStore((s) => s.quantity);
   const selectedFrameCode = useConfiguratorStore((s) => s.selectedFrameCode);
   const selectedFinishCategory = useConfiguratorStore((s) => s.selectedFinishCategory);
   const selectedFinishColorCode = useConfiguratorStore((s) => s.selectedFinishColorCode);
@@ -45,6 +47,7 @@ export function ConfiguratorPage() {
   const configurationConfirmed = useConfiguratorStore((s) => s.configurationConfirmed);
 
   const setDimensions = useConfiguratorStore((s) => s.setDimensions);
+  const setQuantity = useConfiguratorStore((s) => s.setQuantity);
   const selectFrame = useConfiguratorStore((s) => s.selectFrame);
   const selectFinishCategory = useConfiguratorStore((s) => s.selectFinishCategory);
   const selectFinishColor = useConfiguratorStore((s) => s.selectFinishColor);
@@ -192,6 +195,51 @@ export function ConfiguratorPage() {
                   outline: 'none',
                 }}
               />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 100 }}>
+              <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{t.qtyLabel}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => setQuantity(quantity - 1)}
+                  disabled={quantity <= 1}
+                  style={{
+                    width: 40, height: 44, fontSize: 20, fontWeight: 600,
+                    borderRadius: 10, border: '1px solid var(--border-strong)',
+                    background: 'var(--surface)', cursor: quantity <= 1 ? 'not-allowed' : 'pointer',
+                    opacity: quantity <= 1 ? 0.4 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}
+                >
+                  −
+                </button>
+                <input
+                  type="number"
+                  min={1}
+                  value={quantity}
+                  onChange={(e) => {
+                    const n = Number(e.target.value);
+                    if (Number.isFinite(n) && n >= 1) setQuantity(n);
+                  }}
+                  style={{
+                    width: 64, padding: '12px 8px', fontSize: 17, textAlign: 'center',
+                    borderRadius: 12, border: '1px solid var(--border-strong)',
+                    background: 'var(--surface)', outline: 'none',
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setQuantity(quantity + 1)}
+                  style={{
+                    width: 40, height: 44, fontSize: 20, fontWeight: 600,
+                    borderRadius: 10, border: '1px solid var(--border-strong)',
+                    background: 'var(--surface)', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}
+                >
+                  +
+                </button>
+                <span style={{ fontSize: 14, color: 'var(--text-secondary)' }}>{t.qtyUnit}</span>
+              </div>
             </label>
           </div>
         </StepSection>
@@ -592,6 +640,7 @@ export function ConfiguratorPage() {
       </main>
 
       <PriceBar />
+      <CartDrawer />
 
       {/* Keep finish color id in sync when category changes — store clears color on category change; ensure id format matches */}
       <FinishColorSync />

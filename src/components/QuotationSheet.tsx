@@ -13,6 +13,7 @@ function fmtFinishCategory(locale: 'zh' | 'en', cat: string | null): string {
 export function QuotationSheet() {
   const uiLocale = useConfiguratorStore((s) => s.uiLocale);
   const configurationConfirmed = useConfiguratorStore((s) => s.configurationConfirmed);
+  const quantity = useConfiguratorStore((s) => s.quantity);
   const getQuotationSnapshot = useConfiguratorStore((s) => s.getQuotationSnapshot);
 
   const t = msg(uiLocale);
@@ -21,13 +22,12 @@ export function QuotationSheet() {
 
   const currencyLocale = uiLocale === 'zh' ? 'zh-CN' : 'en-US';
 
-  const totalDisplay =
-    snap.total !== null
-      ? `¥${snap.total.toLocaleString(currencyLocale, {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        })}`
-      : '—';
+  const fmtPrice = (n: number) =>
+    `¥${n.toLocaleString(currencyLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  const unitDisplay = snap.total !== null ? fmtPrice(snap.total) : '—';
+  const lineTotal = snap.total !== null ? snap.total * quantity : null;
+  const totalDisplay = lineTotal !== null ? fmtPrice(lineTotal) : '—';
 
   const finishSpec =
     snap.finishExcelCode && snap.finishName
@@ -242,6 +242,7 @@ export function QuotationSheet() {
           )}
           {row(q.hingeQty, snap.hingeQtyLabel)}
           {row(q.hingeColor, snap.hingeColor ?? '—')}
+          {row(t.qtyLabel, `${quantity} ${t.qtyUnit}`)}
         </tbody>
       </table>
 
@@ -318,6 +319,11 @@ export function QuotationSheet() {
           >
             {t.totalLabel}
           </p>
+          {quantity > 1 && snap.total !== null && (
+            <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>
+              {unitDisplay} × {quantity}
+            </p>
+          )}
           <p
             style={{
               margin: '6px 0 0',
