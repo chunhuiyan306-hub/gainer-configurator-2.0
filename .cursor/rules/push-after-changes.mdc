@@ -1,0 +1,25 @@
+---
+description: 修改代码后同步到 GitHub 以触发 Vercel 自动部署
+globs: "**/*"
+alwaysApply: true
+---
+
+# Gainer 配置器 — GitHub / Vercel 同步
+
+本仓库已关联：
+
+- **GitHub：** https://github.com/chunhuiyan306-hub/gainer-configurator-2.0（默认分支 `main`）
+- **Vercel：** 项目 `gainer-configurator-v2`，与上述仓库已 Connect Git；推送 `main` 后会自动构建部署。
+
+## 对 AI 助手的要求
+
+在本项目中**完成有意义的代码或配置修改后**（非仅回答问题、未改文件时除外），应执行：
+
+1. `git status` 确认变更
+2. `git add -A`（或只 add 相关文件）
+3. `git commit -m "简短英文或中文说明"` 
+4. `git push origin main`
+
+若 `git push` 因本环境无凭据失败，明确告知用户在项目根目录自行执行上述命令，并说明需已配置 GitHub 登录（HTTPS 凭据或 SSH）。
+
+不要提交 `node_modules`、`.env` 等已被 `.gitignore` 忽略的内容。
