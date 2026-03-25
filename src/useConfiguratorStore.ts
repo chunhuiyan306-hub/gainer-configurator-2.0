@@ -387,18 +387,90 @@ function isHandleMatchedToFrame(handle: Handle, frame: Frame): boolean {
 // Hardware Matching Helper
 // =============================================================================
 
+const HW_SYNONYMS: [string, string][] = [
+  ['top and bottom hinge', 'air hinge'],
+  ['top and bottom hinges', 'air hinge'],
+  ['air hinges', 'air hinge'],
+];
+
+function _normalizeHwText(s: string): string {
+  let t = s.toLowerCase().replace(/[()（）°℃]/g, ' ').replace(/\s+/g, ' ').trim();
+  for (const [from, to] of HW_SYNONYMS) {
+    while (t.includes(from)) t = t.replace(from, to);
+  }
+  return t;
+}
+
+const _HW_STOP = new Set([
+  'hinge', 'hinges', 'door', 'assembly', 'concealed', 'cover',
+  'overlay', 'type', 'with', 'for', 'and', 'the', 'inset',
+  'full', 'half', 'quick', 'soft', 'close', 'pin', 'pivot',
+  'heavy', 'duty', 'metal', 'base', 'sleeve', 'wooden',
+]);
+
+function _sigBigrams(text: string): Set<string> {
+  const w = text.split(/\s+/).filter(Boolean);
+  const s = new Set<string>();
+  for (let i = 0; i < w.length - 1; i++) {
+    if (!_HW_STOP.has(w[i]) || !_HW_STOP.has(w[i + 1])) {
+      s.add(`${w[i]} ${w[i + 1]}`);
+    }
+  }
+  return s;
+}
+
 function findMatchedHardware(frame: Frame): Hardware[] {
   if (!frame.matchedHardware) return [];
-  const raw = frame.matchedHardware.toLowerCase();
-  return hardwareList
-    .filter((hw) => {
-      const name = hw.name.toLowerCase();
-      return raw.includes(name) || name.split(/[/(]/).some((part) => {
-        const p = part.trim();
-        return p.length > 3 && raw.includes(p);
-      });
-    })
-    ;
+  const rawNorm = _normalizeHwText(frame.matchedHardware);
+  const rawTokens = rawNorm.split(/[/&,]/).map((s) => s.trim()).filter(Boolean);
+
+  type ScoredHw = { hw: Hardware; score: number };
+  const scored: ScoredHw[] = [];
+
+  for (const hw of hardwareList) {
+    const nameNorm = _normalizeHwText(hw.name);
+    const codeNorm = hw.code ? hw.code.toLowerCase().replace(/^hg-/, '') : '';
+    let score = 0;
+
+    if (rawNorm.includes(nameNorm) || nameNorm.includes(rawNorm)) {
+      score = Math.max(score, 100);
+    }
+
+    if (codeNorm.length >= 4 && rawNorm.includes(codeNorm)) {
+      score = Math.max(score, 90);
+    }
+
+    const nameIds = (nameNorm.match(/[a-z0-9][-a-z0-9]{3,}/g) ?? [])
+      .filter((t) => !_HW_STOP.has(t) && t.length > 4);
+    if (nameIds.some((t) => rawNorm.includes(t))) {
+      score = Math.max(score, 80);
+    }
+
+    for (const rt of rawTokens) {
+      if (!rt || rt.length < 4) continue;
+      if (nameNorm.includes(rt)) { score = Math.max(score, 85); break; }
+      const ids = (rt.match(/[a-z0-9][-a-z0-9]{3,}/g) ?? [])
+        .filter((t) => !_HW_STOP.has(t) && t.length > 4);
+      if (ids.some((t) => nameNorm.includes(t))) { score = Math.max(score, 75); break; }
+    }
+
+    if (score === 0) {
+      const rawBg = _sigBigrams(rawNorm);
+      for (const bg of _sigBigrams(nameNorm)) {
+        if (rawBg.has(bg)) { score = 50; break; }
+      }
+    }
+
+    if (score > 0) scored.push({ hw, score });
+  }
+
+  if (scored.length === 0) return [];
+  const maxScore = Math.max(...scored.map((s) => s.score));
+  const threshold = maxScore >= 75 ? 50 : 40;
+  return scored
+    .filter((s) => s.score >= threshold)
+    .sort((a, b) => b.score - a.score)
+    .map((s) => s.hw);
 }
 
 function skuSanitize(part: string): string {
@@ -1296,8 +1368,11 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
         const handle = s.selectedHandleCode ?? '000';
         const hingeCalc = get().getHingeCalculation();
         let hinge = '000';
-        if (hingeCalc.matchedHardware.length > 0 && hingeCalc.matchedHardware[0].code != null) {
-          hinge = skuSanitize(String(hingeCalc.matchedHardware[0].code));
+        if (hingeCalc.matchedHardware.length > 0) {
+          const hw = hingeCalc.matchedHardware[0];
+          hinge = hw.code != null
+            ? skuSanitize(String(hw.code))
+            : skuSanitize(hw.name);
         } else if (hingeCalc.usePivot) {
           const pivotHw = hardwareList.find((hw) => hw.name.toLowerCase().includes('pivot'));
           hinge = pivotHw?.code != null ? skuSanitize(String(pivotHw.code)) : 'PIVOT';

@@ -551,9 +551,45 @@ export function ConfiguratorPage() {
             </p>
           ) : null}
 
+          {hingeCalc.matchedHardware.length > 0 ? (
+            <div style={gridStyle}>
+              {hingeCalc.matchedHardware.map((hw) => (
+                <div
+                  key={hw.code ?? hw.name}
+                  style={{
+                    borderRadius: 14,
+                    border: '2px solid var(--border)',
+                    overflow: 'hidden',
+                    background: 'var(--surface)',
+                  }}
+                >
+                  <MediaThumb picture={hw.picture} alt={hw.code ?? hw.name} />
+                  <div style={{ padding: '12px 14px 14px' }}>
+                    <div style={{ fontWeight: 600, fontSize: 14 }}>{hw.code ?? '—'}</div>
+                    <div
+                      style={{
+                        marginTop: 4,
+                        fontSize: 12,
+                        color: 'var(--text-secondary)',
+                        lineHeight: 1.35,
+                      }}
+                    >
+                      {hw.name}
+                    </div>
+                    {hw.pricePerPiece != null ? (
+                      <div style={{ marginTop: 4, fontSize: 12, color: 'var(--text-secondary)' }}>
+                        ¥{hw.pricePerPiece}/pc
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : null}
+
           {frame?.matchedHardware && hingeCalc.availableColors.length > 0 ? (
             <>
-              <p style={{ margin: '0 0 12px', fontSize: 14, color: 'var(--text-secondary)' }}>
+              <p style={{ margin: '16px 0 12px', fontSize: 14, color: 'var(--text-secondary)' }}>
                 {t.hingeColorLabel}
               </p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
