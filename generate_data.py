@@ -136,6 +136,23 @@ anod_pics = _extract_color_sheet(wb["Anodized Color"], "anodize")
 soft_pics = _extract_color_sheet(wb["Sprayed Soft-Touch Color"], "spray-soft")
 metal_pics = _extract_color_sheet(wb["Sprayed Metallic Color"], "spray-metallic")
 hardware_pics = _extract_row_images(wb["hardware"], "hardware", 4, [2, 1, 3])
+
+# Also extract images for hardware rows that have no code, keyed by slugified name
+def _extract_hardware_name_images(ws, subdir, prefer_cols, min_row=2):
+    mapping = {}
+    for r in range(min_row, ws.max_row + 1):
+        code = ws.cell(r, 4).value
+        name = ws.cell(r, 1).value
+        if code or not name:
+            continue
+        key = _slug(str(name).replace("\n", " ").strip())
+        im = _best_image_for_row(ws, r, prefer_cols)
+        if not im:
+            continue
+        mapping[key] = _save_catalog_image(im, subdir, key)
+    return mapping
+
+hardware_name_pics = _extract_hardware_name_images(wb["hardware"], "hardware", [2, 1, 3])
 handle_pics = _extract_row_images(wb["handle"], "handle", 1, [2, 3])
 
 raw = {name: _sheet_rows(name) for name in wb.sheetnames}
@@ -561,12 +578,19 @@ for row in raw["hardware"][1:]:
 
     colors = parse_hardware_colors(color_raw) if color_raw else []
 
+    clean_name = name.replace("\n", " ").strip()
+    pic = None
+    if code:
+        pic = hardware_pics.get(str(code).strip())
+    else:
+        pic = hardware_name_pics.get(_slug(clean_name))
+
     hardware_list.append({
         "code": code,
-        "name": name.replace("\n", " ").strip(),
+        "name": clean_name,
         "allowedColors": colors,
         "pricePerPiece": price,
-        "picture": hardware_pics.get(str(code).strip()) if code else None,
+        "picture": pic,
     })
 
 # ---------------------------------------------------------------------------

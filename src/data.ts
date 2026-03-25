@@ -2395,10 +2395,10 @@ export const hardwareList = [
   },
 {
     code: null,
-    name: 'Heavy duty top and bottom hinge',
+    name: 'Heavy duty air hinge',
     allowedColors: [],
     pricePerPiece: 180,
-    picture: null,
+    picture: '/assets/catalog/hardware/Heavy_duty_air_hinge.png',
   },
 {
     code: null,
@@ -2454,21 +2454,21 @@ export const hardwareList = [
     name: 'Pipe Hinge（salichi/blum）',
     allowedColors: [],
     pricePerPiece: null,
-    picture: null,
+    picture: '/assets/catalog/hardware/Pipe_Hinge_salichi_blum_.png',
   },
 {
     code: null,
     name: 'JM668-1 Hinge Base Sleeve',
     allowedColors: [],
     pricePerPiece: null,
-    picture: null,
+    picture: '/assets/catalog/hardware/JM668-1_Hinge_Base_Sleeve.png',
   },
 {
     code: null,
     name: 'JM668-2 Zinc Alloy Hinge Base Sleeve',
     allowedColors: [],
     pricePerPiece: null,
-    picture: null,
+    picture: '/assets/catalog/hardware/JM668-2_Zinc_Alloy_Hinge_Base_Sleeve.png',
   }
 ] as const;
 
