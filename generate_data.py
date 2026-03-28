@@ -335,6 +335,26 @@ def parse_hinge_codes(raw):
     return [p.strip() for p in parts if p.strip() and p.strip() not in ("/", "\\")]
 
 
+def _hinge_code_fingerprint(s: str) -> str:
+    """Lowercase alphanumeric only — matches AN1723D to AN 172 3D."""
+    return re.sub(r"[^a-z0-9]", "", str(s).strip().lower())
+
+
+# Cabinet Door column P typos / variants → canonical code string on hardware sheet
+_HINGE_CODE_CANONICAL_BY_FINGERPRINT = {
+    "an1723d": "AN 172 3D",
+}
+
+
+def normalize_hinge_code_for_catalog(token: str) -> str:
+    """Map Excel hinge tokens to hardware sheet codes where we know aliases."""
+    t = str(token).strip()
+    if not t:
+        return t
+    fp = _hinge_code_fingerprint(t)
+    return _HINGE_CODE_CANONICAL_BY_FINGERPRINT.get(fp, t)
+
+
 def infer_specific_colors_from_filler(std_filler_raw: str):
     if not std_filler_raw or str(std_filler_raw).strip() in ("\\", "color swatch colors"):
         return None
@@ -498,7 +518,9 @@ for r in range(3, ws_cab.max_row + 1):
     matched_handle = str(handle_raw).replace("\n", " ").strip() if handle_raw else None
     matched_hardware = str(hardware_raw).replace("\n", " ").strip() if hardware_raw else None
     hw_colors = parse_hardware_colors(hw_color_raw)
-    hinge_codes = parse_hinge_codes(hinge_code_raw)
+    hinge_codes = [
+        normalize_hinge_code_for_catalog(c) for c in parse_hinge_codes(hinge_code_raw)
+    ]
 
     gp = parse_glass_prices_cell(price_raw)
     if gp:
@@ -730,6 +752,21 @@ for row in raw["hardware"][1:]:
         "allowedColors": colors,
         "pricePerPiece": price,
         "picture": pic,
+    })
+
+# Placeholder row when Cabinet Door references a hinge code missing from the hardware sheet
+_hw_codes_norm = {
+    _hinge_code_fingerprint(x["code"])
+    for x in hardware_list
+    if x.get("code")
+}
+if "jm47012" not in _hw_codes_norm:  # JM470-1-2
+    hardware_list.append({
+        "code": "JM470-1-2",
+        "name": "JM470-1-2 hinge (placeholder — add photo/price on hardware sheet)",
+        "allowedColors": [],
+        "pricePerPiece": None,
+        "picture": None,
     })
 
 # ---------------------------------------------------------------------------
@@ -997,6 +1034,13 @@ out_parts.append("// -----------------------------------------------------------
 out_parts.append(ts_array(hardware_list, "hardwareList"))
 
 out_parts.append("""
+function _hardwareCodeFingerprint(s: string): string {
+  return String(s)
+    .trim()
+    .toLowerCase()
+    .replace(/[\\s\\-_]+/g, '');
+}
+
 export function getHardwareByCode(code: string | null | undefined): Hardware | null {
   if (!code) return null;
   const raw = String(code).trim().toLowerCase();
@@ -1004,6 +1048,13 @@ export function getHardwareByCode(code: string | null | undefined): Hardware | n
   for (const c of variants) {
     const h = hardwareList.find(
       (x) => x.code != null && String(x.code).trim().toLowerCase() === c,
+    );
+    if (h) return h;
+  }
+  const fp = _hardwareCodeFingerprint(String(code));
+  if (fp.length > 0) {
+    const h = hardwareList.find(
+      (x) => x.code != null && _hardwareCodeFingerprint(String(x.code)) === fp,
     );
     if (h) return h;
   }

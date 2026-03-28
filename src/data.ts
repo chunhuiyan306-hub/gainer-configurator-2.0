@@ -653,8 +653,8 @@ export const frames = [
     pictureSideView: null,
     pictureProfile: null,
     hingePicture: '/assets/catalog/cabinet-door/room-STM008-hinge.png',
-    pictures: [],
-    picture: null,
+    pictures: ['/assets/catalog/cabinet-door/room-STM008-main.png'],
+    picture: '/assets/catalog/cabinet-door/room-STM008-main.png',
   },
 {
     id: 'room-STM019',
@@ -677,13 +677,13 @@ export const frames = [
     mountingType: null,
     matchedHandle: 'GNN2525-1A',
     matchedHardware: 'AN 172 3D',
-    hingeCodes: ['AN1723D'],
+    hingeCodes: ['AN 172 3D'],
     hardwareColors: ['black', 'gray', 'gold'],
     pictureSideView: null,
     pictureProfile: null,
     hingePicture: '/assets/catalog/cabinet-door/room-STM019-hinge.png',
-    pictures: [],
-    picture: null,
+    pictures: ['/assets/catalog/cabinet-door/room-STM019-main.png'],
+    picture: '/assets/catalog/cabinet-door/room-STM019-main.png',
   },
 {
     id: 'room-MK008',
@@ -769,8 +769,8 @@ export const frames = [
     pictureSideView: null,
     pictureProfile: null,
     hingePicture: null,
-    pictures: [],
-    picture: null,
+    pictures: ['/assets/catalog/cabinet-door/room-YM002-main.png'],
+    picture: '/assets/catalog/cabinet-door/room-YM002-main.png',
   }
 ] as const;
 
@@ -2208,9 +2208,23 @@ export const hardwareList = [
     allowedColors: [],
     pricePerPiece: null,
     picture: '/assets/catalog/hardware/JM668-2_Zinc_Alloy_Hinge_Base_Sleeve.png',
+  },
+{
+    code: 'JM470-1-2',
+    name: 'JM470-1-2 hinge (placeholder — add photo/price on hardware sheet)',
+    allowedColors: [],
+    pricePerPiece: null,
+    picture: null,
   }
 ] as const;
 
+
+function _hardwareCodeFingerprint(s: string): string {
+  return String(s)
+    .trim()
+    .toLowerCase()
+    .replace(/[\s\-_]+/g, '');
+}
 
 export function getHardwareByCode(code: string | null | undefined): Hardware | null {
   if (!code) return null;
@@ -2219,6 +2233,13 @@ export function getHardwareByCode(code: string | null | undefined): Hardware | n
   for (const c of variants) {
     const h = hardwareList.find(
       (x) => x.code != null && String(x.code).trim().toLowerCase() === c,
+    );
+    if (h) return h;
+  }
+  const fp = _hardwareCodeFingerprint(String(code));
+  if (fp.length > 0) {
+    const h = hardwareList.find(
+      (x) => x.code != null && _hardwareCodeFingerprint(String(x.code)) === fp,
     );
     if (h) return h;
   }
