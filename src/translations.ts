@@ -30,7 +30,11 @@ const M = {
     frameProfilePrefix: '型材规格：',
     frameMountingInsert: '安装：卡槽（Insert）',
     frameMountingCover: '安装：贴面（Cover）',
+    frameBtnSideView: '侧视图',
+    frameBtnProfile: '型材照片',
+    imagePreviewClose: '关闭',
     hingeCodesLabel: '铰链编码',
+    hingePictureSheetLabel: '铰链示意图（资料表）',
 
     stepSurfaceTitle: '表面处理',
     stepSurfaceSubtitle: '先选工艺大类，再选具体颜色。与门框不兼容的类别与色样已置灰。',
@@ -176,7 +180,11 @@ const M = {
     frameProfilePrefix: 'Profile: ',
     frameMountingInsert: 'Mounting: insert (groove)',
     frameMountingCover: 'Mounting: cover (overlay)',
+    frameBtnSideView: 'Side view',
+    frameBtnProfile: 'Profile photo',
+    imagePreviewClose: 'Close',
     hingeCodesLabel: 'Hinge codes',
+    hingePictureSheetLabel: 'Hinge reference (from datasheet)',
 
     stepSurfaceTitle: 'Surface finish',
     stepSurfaceSubtitle: 'Choose a finish family, then a color. Incompatible options are dimmed.',

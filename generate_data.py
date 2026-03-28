@@ -5,7 +5,8 @@ extracts embedded images into public/assets/catalog/, then writes src/data.ts.
 Cabinet Door sheet (row 2 = header, data from row 3):
   - Rows above the \"Interior DooR\" divider = 柜门 (frameCategory cabinet).
   - Rows below = 房门 (frameCategory room).
-  - Door photos: up to three images per row (prefers columns C–E, then nearby cols).
+  - Column C = main door photo (list thumbnail); D = side view; E = profile section (UI: extra preview buttons).
+  - Column R (18) = hinge picture for Step 6 (separate from door photos).
   - Profile / Cover|Insert from column F; hinge codes from column P (matched to hardware).
 
 Rows using Excel DISPIMG() without true embedded drawings will have no extracted photos;
@@ -84,41 +85,12 @@ def _image_at_row_col(ws, excel_row: int, col_1based: int):
     return None
 
 
-def _door_pictures_for_row(ws, excel_row: int, frame_id: str, subdir: str, max_n: int = 3):
-    """Up to three product images per row: prefer C–E, then other door columns, then R (18)."""
-    found = []
-    for img in ws._images or []:
-        fr = img.anchor._from
-        if fr.row + 1 != excel_row:
-            continue
-        found.append((fr.col + 1, img))
-    found.sort(key=lambda x: x[0])
-    chosen = []
-    used_ids = set()
-
-    def take_for_cols(cols: list[int]):
-        nonlocal chosen
-        for pc in cols:
-            for c, im in found:
-                if c != pc or id(im) in used_ids:
-                    continue
-                chosen.append(im)
-                used_ids.add(id(im))
-                if len(chosen) >= max_n:
-                    return
-
-    take_for_cols([3, 4, 5])
-    if len(chosen) < max_n:
-        for c, im in found:
-            if id(im) in used_ids or len(chosen) >= max_n:
-                continue
-            if 2 <= c <= 7 or c in (16, 17, 18):
-                chosen.append(im)
-                used_ids.add(id(im))
-    urls = []
-    for i, im in enumerate(chosen[:max_n]):
-        urls.append(_save_catalog_image(im, subdir, f"{frame_id}-{i + 1}"))
-    return urls
+def _save_image_at_cell(ws, excel_row: int, col_1based: int, subdir: str, basename: str):
+    """Save the first embedded image anchored on (row, col), or None."""
+    im = _image_at_row_col(ws, excel_row, col_1based)
+    if not im:
+        return None
+    return _save_catalog_image(im, subdir, basename)
 
 
 def _worksheet(wb, *names: str):
@@ -488,8 +460,14 @@ for r in range(3, ws_cab.max_row + 1):
     code = str(code_cell).strip()
     frame_id = f"{category}-{code}"
 
-    pics = _door_pictures_for_row(ws_cab, r, frame_id, "cabinet-door", max_n=3)
-    picture = pics[0] if pics else None
+    # C, D, E = main / side / profile only (never use hinge or other cols for door strip)
+    picture_main = _save_image_at_cell(ws_cab, r, 3, "cabinet-door", f"{frame_id}-main")
+    picture_side = _save_image_at_cell(ws_cab, r, 4, "cabinet-door", f"{frame_id}-side")
+    picture_profile = _save_image_at_cell(ws_cab, r, 5, "cabinet-door", f"{frame_id}-profile")
+    hinge_picture = _save_image_at_cell(ws_cab, r, 18, "cabinet-door", f"{frame_id}-hinge")
+    # List thumbnail: column C; if empty, fall back so the card is not blank
+    picture = picture_main or picture_side or picture_profile
+    pics = [u for u in (picture_main, picture_side, picture_profile) if u]
 
     think_raw = ws_cab.cell(r, 6).value
     frame_profile_label, mounting_type = parse_frame_profile_mounting(think_raw)
@@ -544,6 +522,9 @@ for r in range(3, ws_cab.max_row + 1):
         "matchedHardware": matched_hardware,
         "hingeCodes": hinge_codes,
         "hardwareColors": hw_colors,
+        "pictureSideView": picture_side,
+        "pictureProfile": picture_profile,
+        "hingePicture": hinge_picture,
         "pictures": pics,
         "picture": picture,
     })
@@ -862,8 +843,15 @@ export interface Frame {
   /** Hinge product codes from Excel (e.g. AIRHINGE / HG-BLUM), matched to hardwareList. */
   hingeCodes: readonly string[];
   hardwareColors: readonly string[];
-  /** Up to three door photos (columns C–E), aluminum frames like GM004. */
+  /** Column D — side view; opened from button on frame card. */
+  pictureSideView: string | null;
+  /** Column E — profile section; opened from button on frame card. */
+  pictureProfile: string | null;
+  /** Column R — hinge photo from sheet (Step 6). */
+  hingePicture: string | null;
+  /** [main, side, profile] with nulls removed (compatibility). */
   pictures: readonly string[];
+  /** Column C — main list thumbnail; if C is empty, falls back to D then E. */
   picture: string | null;
 }
 

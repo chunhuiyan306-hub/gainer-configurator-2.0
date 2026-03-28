@@ -2,7 +2,7 @@ import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { useConfiguratorStore, type FinishCategory, type FrameOption } from './useConfiguratorStore';
 import { StepSection } from './components/StepSection';
 import { SelectableTile } from './components/SelectableTile';
-import { FramePicturesStrip, MediaThumb } from './components/MediaThumb';
+import { MediaThumb } from './components/MediaThumb';
 import { PriceBar } from './components/PriceBar';
 import { QuotationSheet } from './components/QuotationSheet';
 import { CartDrawer } from './components/CartDrawer';
@@ -73,6 +73,7 @@ export function ConfiguratorPage() {
   const getValidationErrors = useConfiguratorStore((s) => s.getValidationErrors);
 
   const [confirmHint, setConfirmHint] = useState<string | null>(null);
+  const [imagePreview, setImagePreview] = useState<{ src: string; title: string } | null>(null);
 
   const frameOptions = getFrameOptions();
   const finishCategories = getFinishCategoryOptions();
@@ -262,6 +263,7 @@ export function ConfiguratorPage() {
             gridStyle={gridStyle}
             selectedFrameCode={selectedFrameCode}
             selectFrame={selectFrame}
+            onPreviewImage={(src, title) => setImagePreview({ src, title })}
             t={t}
           />
           <FrameSectionBlock
@@ -270,6 +272,7 @@ export function ConfiguratorPage() {
             gridStyle={gridStyle}
             selectedFrameCode={selectedFrameCode}
             selectFrame={selectFrame}
+            onPreviewImage={(src, title) => setImagePreview({ src, title })}
             t={t}
           />
         </StepSection>
@@ -554,6 +557,44 @@ export function ConfiguratorPage() {
             </p>
           ) : null}
 
+          {frame?.hingePicture ? (
+            <div
+              style={{
+                marginBottom: 18,
+                borderRadius: 14,
+                overflow: 'hidden',
+                border: '1px solid var(--border-strong)',
+                background: 'var(--surface)',
+              }}
+            >
+              <p
+                style={{
+                  margin: 0,
+                  padding: '12px 14px 8px',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: 'var(--text)',
+                }}
+              >
+                {t.hingePictureSheetLabel}
+              </p>
+              <div style={{ padding: '0 14px 14px' }}>
+                <img
+                  src={frame.hingePicture}
+                  alt={t.hingePictureSheetLabel}
+                  style={{
+                    width: '100%',
+                    maxHeight: 380,
+                    objectFit: 'contain',
+                    display: 'block',
+                    borderRadius: 10,
+                    background: 'var(--surface-muted, rgba(0,0,0,0.04))',
+                  }}
+                />
+              </div>
+            </div>
+          ) : null}
+
           {hingeCalc.matchedHardware.length > 0 ? (
             <div style={gridStyle}>
               {hingeCalc.matchedHardware.map((hw) => (
@@ -681,9 +722,113 @@ export function ConfiguratorPage() {
       <PriceBar />
       <CartDrawer />
 
+      {imagePreview ? (
+        <ImageLightbox
+          src={imagePreview.src}
+          title={imagePreview.title}
+          closeLabel={t.imagePreviewClose}
+          onClose={() => setImagePreview(null)}
+        />
+      ) : null}
+
       {/* Keep finish color id in sync when category changes — store clears color on category change; ensure id format matches */}
       <FinishColorSync />
     </>
+  );
+}
+
+function ImageLightbox({
+  src,
+  title,
+  closeLabel,
+  onClose,
+}: {
+  src: string;
+  title: string;
+  closeLabel: string;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 2000,
+        background: 'rgba(0, 0, 0, 0.78)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 20,
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          position: 'relative',
+          maxWidth: 'min(960px, 96vw)',
+          maxHeight: '92vh',
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          style={{
+            position: 'absolute',
+            top: -6,
+            right: -6,
+            zIndex: 2,
+            padding: '8px 14px',
+            fontSize: 14,
+            fontWeight: 600,
+            borderRadius: 10,
+            border: 'none',
+            background: 'var(--surface)',
+            color: 'var(--text)',
+            cursor: 'pointer',
+            boxShadow: '0 2px 12px rgba(0,0,0,0.2)',
+          }}
+        >
+          {closeLabel}
+        </button>
+        <img
+          src={src}
+          alt={title}
+          style={{
+            display: 'block',
+            maxWidth: '100%',
+            maxHeight: 'min(82vh, 800px)',
+            width: 'auto',
+            height: 'auto',
+            objectFit: 'contain',
+            borderRadius: 12,
+            background: '#111',
+          }}
+        />
+        <p
+          style={{
+            margin: '12px 0 0',
+            fontSize: 14,
+            color: '#eee',
+            textAlign: 'center',
+            lineHeight: 1.4,
+          }}
+        >
+          {title}
+        </p>
+      </div>
+    </div>
   );
 }
 
@@ -693,6 +838,7 @@ function FrameSectionBlock({
   gridStyle,
   selectedFrameCode,
   selectFrame,
+  onPreviewImage,
   t,
 }: {
   title: string;
@@ -700,9 +846,21 @@ function FrameSectionBlock({
   gridStyle: CSSProperties;
   selectedFrameCode: string | null;
   selectFrame: (id: string | null) => void;
+  onPreviewImage: (src: string, title: string) => void;
   t: UiMessages;
 }) {
   if (options.length === 0) return null;
+
+  const btnStyle: CSSProperties = {
+    padding: '6px 10px',
+    fontSize: 12,
+    fontWeight: 600,
+    borderRadius: 8,
+    border: '1px solid var(--border-strong)',
+    background: 'var(--surface)',
+    color: 'var(--text)',
+    cursor: 'pointer',
+  };
 
   return (
     <section style={{ marginBottom: 28 }}>
@@ -726,12 +884,7 @@ function FrameSectionBlock({
               disabled={disabled}
               onClick={() => selectFrame(f.id)}
             >
-              <FramePicturesStrip
-                pictures={f.pictures}
-                fallbackPicture={f.picture}
-                alt={f.code}
-                disabled={disabled}
-              />
+              <MediaThumb picture={f.picture} alt={f.code} disabled={disabled} />
               <div style={{ padding: '12px 14px 14px' }}>
                 <div style={{ fontWeight: 600, fontSize: 15 }}>{f.code}</div>
                 <div
@@ -760,13 +913,49 @@ function FrameSectionBlock({
                   </div>
                 ) : null}
                 {f.mountingType === 'insert' ? (
-                  <div style={{ marginTop: 4, fontSize: 11, color: 'var(--accent)' }}>
+                  <div style={{ marginTop: 4, fontSize: 11, color: 'var(--text-secondary)' }}>
                     {t.frameMountingInsert}
                   </div>
                 ) : null}
                 {f.mountingType === 'cover' ? (
-                  <div style={{ marginTop: 4, fontSize: 11, color: 'var(--accent)' }}>
+                  <div style={{ marginTop: 4, fontSize: 11, color: 'var(--text-secondary)' }}>
                     {t.frameMountingCover}
+                  </div>
+                ) : null}
+                {f.pictureSideView || f.pictureProfile ? (
+                  <div
+                    role="group"
+                    aria-label={`${f.code} reference photos`}
+                    style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 8 }}
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => e.stopPropagation()}
+                  >
+                    {f.pictureSideView ? (
+                      <button
+                        type="button"
+                        style={btnStyle}
+                        disabled={disabled}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (!disabled) onPreviewImage(f.pictureSideView!, `${f.code} · ${t.frameBtnSideView}`);
+                        }}
+                      >
+                        {t.frameBtnSideView}
+                      </button>
+                    ) : null}
+                    {f.pictureProfile ? (
+                      <button
+                        type="button"
+                        style={btnStyle}
+                        disabled={disabled}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (!disabled) onPreviewImage(f.pictureProfile!, `${f.code} · ${t.frameBtnProfile}`);
+                        }}
+                      >
+                        {t.frameBtnProfile}
+                      </button>
+                    ) : null}
                   </div>
                 ) : null}
               </div>
