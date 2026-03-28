@@ -72,6 +72,8 @@ export interface HingeCalculation {
   pivotWarning: string | null;
   availableColors: string[];
   matchedHardware: Hardware[];
+  /** Resolved from selectedHingeHardwareCode, else first match. */
+  effectiveHardware: Hardware | null;
 }
 
 export type PriceLineStatus = 'calculated' | 'tba' | 'included';
@@ -157,6 +159,8 @@ interface ConfiguratorState {
 
   // --- Step 6: Hinge ---
   selectedHingeColor: string | null;
+  /** hardwareList code when multiple hinges (e.g. HG-BLUM vs HG-SEN). */
+  selectedHingeHardwareCode: string | null;
 
   configurationConfirmed: boolean;
 
@@ -181,6 +185,7 @@ interface ConfiguratorActions {
   selectHandle: (code: string | null) => void;
   selectHandleColor: (color: string | null) => void;
   selectHingeColor: (color: string | null) => void;
+  selectHingeHardware: (hardwareCode: string | null) => void;
   reset: () => void;
   resetConfiguration: () => void;
   confirmConfiguration: () => void;
@@ -253,6 +258,7 @@ const initialState: ConfiguratorState = {
   selectedHandleCode: null,
   selectedHandleColor: null,
   selectedHingeColor: null,
+  selectedHingeHardwareCode: null,
   configurationConfirmed: false,
   cartItems: loadCart(),
   cartOpen: false,
@@ -272,6 +278,7 @@ const clearFromFinish: Partial<ConfiguratorState> = {
   selectedHandleCode: null,
   selectedHandleColor: null,
   selectedHingeColor: null,
+  selectedHingeHardwareCode: null,
   configurationConfirmed: false,
 };
 
@@ -353,6 +360,9 @@ function isHandleMatchedToFrame(handle: Handle, frame: Frame): boolean {
   const tokens = raw.split(/[\n/]/).map((s) => s.trim()).filter(Boolean);
   const hCode = handle.code.toLowerCase();
   const hName = handle.name.toLowerCase();
+  if (raw.includes('routed') && raw.includes('cnc')) {
+    if (hName.includes('铣') || hName.includes('cnc') || hName.includes('定尺')) return true;
+  }
   return tokens.some(
     (t) => t === hCode || t === hName || hCode.includes(t) || t.includes(hCode),
   );
@@ -458,6 +468,22 @@ function findMatchedHardware(frame: Frame): Hardware[] {
     .filter((s) => s.score >= threshold)
     .sort((a, b) => b.score - a.score)
     .map((s) => s.hw);
+}
+
+function resolvePickedHingeHardware(
+  frame: Frame | null,
+  selectedCode: string | null,
+): Hardware | null {
+  if (!frame) return null;
+  const list = findMatchedHardware(frame);
+  if (list.length === 0) return null;
+  if (selectedCode) {
+    const hit = list.find(
+      (h) => h.code != null && String(h.code).toLowerCase() === selectedCode.toLowerCase(),
+    );
+    if (hit) return hit;
+  }
+  return list[0] ?? null;
 }
 
 function skuSanitize(part: string): string {
@@ -668,12 +694,17 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
             : frame.matchedHardware ? ['black', 'gray', 'gold'] : [];
         const autoHingeColor = hingeColors.length > 0 ? hingeColors[0] : null;
 
+        const mhList = findMatchedHardware(frame);
+        const autoHingeHw =
+          mhList[0]?.code != null ? String(mhList[0].code) : null;
+
         set(
           {
             selectedFrameCode: code,
             ...clearFromFinish,
             selectedHandleCode: autoHandleCode,
             selectedHingeColor: autoHingeColor,
+            selectedHingeHardwareCode: autoHingeHw,
             configurationConfirmed: false,
           },
           undefined,
@@ -833,6 +864,14 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
       // =====================================================================
       selectHingeColor: (color) => {
         set({ selectedHingeColor: color, configurationConfirmed: false }, undefined, 'selectHingeColor');
+      },
+
+      selectHingeHardware: (hardwareCode) => {
+        set(
+          { selectedHingeHardwareCode: hardwareCode, configurationConfirmed: false },
+          undefined,
+          'selectHingeHardware',
+        );
       },
 
       // =====================================================================
@@ -1083,16 +1122,27 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
       // hinge is needed, and resolves available colors.
       // =====================================================================
       getHingeCalculation: (): HingeCalculation => {
-        const { height } = get();
+        const { height, selectedHingeHardwareCode } = get();
         const frame = findFrame(get().selectedFrameCode);
 
-        if (!height || !frame) {
+        const matched = frame ? findMatchedHardware(frame) : [];
+        const effectiveHardware = resolvePickedHingeHardware(frame, selectedHingeHardwareCode);
+
+        const availableColors =
+          frame && matched.length > 0
+            ? frame.hardwareColors.length > 0
+              ? [...frame.hardwareColors]
+              : ['black', 'gray', 'gold']
+            : [];
+
+        if (!frame) {
           return {
             qty: 0,
             usePivot: false,
             pivotWarning: null,
             availableColors: [],
             matchedHardware: [],
+            effectiveHardware: null,
           };
         }
 
@@ -1100,7 +1150,9 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
         let usePivot = false;
         let pivotWarning: string | null = null;
 
-        if (height <= 2000) {
+        if (!height || height <= 0) {
+          qty = 0;
+        } else if (height <= 2000) {
           qty = 2;
         } else if (height <= 2500) {
           qty = 4;
@@ -1110,12 +1162,14 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
           pivotWarning = msg(get().uiLocale).pivotWarning;
         }
 
-        const matched = findMatchedHardware(frame);
-        const availableColors = frame.hardwareColors.length > 0
-          ? [...frame.hardwareColors]
-          : ['black', 'gray', 'gold'];
-
-        return { qty, usePivot, pivotWarning, availableColors, matchedHardware: matched };
+        return {
+          qty,
+          usePivot,
+          pivotWarning,
+          availableColors,
+          matchedHardware: matched,
+          effectiveHardware,
+        };
       },
 
       // =====================================================================
@@ -1187,7 +1241,7 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
         // --- Hardware / Hinge price ---
         const hingeCalc = get().getHingeCalculation();
         if (hingeCalc.matchedHardware.length > 0 && hingeCalc.qty > 0) {
-          const hw = hingeCalc.matchedHardware[0];
+          const hw = hingeCalc.effectiveHardware ?? hingeCalc.matchedHardware[0];
           if (hw.pricePerPiece !== null) {
             const hwTotal = hw.pricePerPiece * hingeCalc.qty;
             lines.push({
@@ -1283,10 +1337,17 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
             errors.push(V.selectHandleColor);
           }
         }
-        if (frame?.matchedHardware && !s.selectedHingeColor) {
+
+        const hingeCalc = get().getHingeCalculation();
+        if (
+          frame?.matchedHardware &&
+          hingeCalc.matchedHardware.length > 0 &&
+          !hingeCalc.usePivot &&
+          hingeCalc.availableColors.length > 0 &&
+          !s.selectedHingeColor
+        ) {
           errors.push(V.selectHingeColor);
         }
-
         return errors;
       },
 
@@ -1320,6 +1381,8 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
           if (matchedHandles.length > 0) {
             if (!selectedHandleCode || !s.selectedHandleColor) return null;
             handleSeg = `${skuSanitize(selectedHandleCode)}${skuSanitize(s.selectedHandleColor)}`;
+          } else {
+            handleSeg = skuSanitize(frame.matchedHandle);
           }
         }
 
@@ -1333,7 +1396,7 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
           hingeSeg = `${skuSanitize(c)}PIVOT`;
         } else if (frame.matchedHardware && hingeCalc.matchedHardware.length > 0) {
           if (!selectedHingeColor) return null;
-          const hw = hingeCalc.matchedHardware[0];
+          const hw = hingeCalc.effectiveHardware ?? hingeCalc.matchedHardware[0];
           const hwCode = hw.code != null ? String(hw.code) : skuSanitize(hw.name);
           hingeSeg = `${skuSanitize(hwCode)}${skuSanitize(selectedHingeColor)}`;
         } else if (frame.matchedHardware && selectedHingeColor) {
@@ -1357,14 +1420,25 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
             ? String(fin.excelCode).trim()
             : '000';
         const filler = s.selectedFillerCode ?? '000';
-        const handle = s.selectedHandleCode ?? '000';
+        let handle = '000';
+        if (s.selectedHandleCode) {
+          handle = skuSanitize(s.selectedHandleCode);
+          if (s.selectedHandleColor) {
+            handle = `${handle}-${skuSanitize(s.selectedHandleColor)}`;
+          }
+        } else if (fr?.matchedHandle) {
+          handle = skuSanitize(fr.matchedHandle);
+        }
         const hingeCalc = get().getHingeCalculation();
         let hinge = '000';
         if (hingeCalc.matchedHardware.length > 0) {
-          const hw = hingeCalc.matchedHardware[0];
+          const hw = hingeCalc.effectiveHardware ?? hingeCalc.matchedHardware[0];
           hinge = hw.code != null
             ? skuSanitize(String(hw.code))
             : skuSanitize(hw.name);
+          if (s.selectedHingeColor) {
+            hinge = `${hinge}-${skuSanitize(s.selectedHingeColor)}`;
+          }
         } else if (hingeCalc.usePivot) {
           const pivotHw = hardwareList.find((hw) => hw.name.toLowerCase().includes('pivot'));
           hinge = pivotHw?.code != null ? skuSanitize(String(pivotHw.code)) : 'PIVOT';
@@ -1424,7 +1498,7 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
         if (hingeCalc.usePivot) hingeQtyLabel = L.hingePivot;
         else if (hingeCalc.qty > 0) hingeQtyLabel = L.hingeEach(hingeCalc.qty);
 
-        const hw0 = hingeCalc.matchedHardware[0];
+        const hw0 = hingeCalc.effectiveHardware ?? hingeCalc.matchedHardware[0];
 
         return {
           widthMm: w,
@@ -1437,8 +1511,8 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
           finishCategory: fin?.category ?? s.selectedFinishCategory,
           fillerCode: s.selectedFillerCode,
           fillerName: filler?.name ?? null,
-          handleCode: s.selectedHandleCode,
-          handleName: handle?.name ?? null,
+          handleCode: s.selectedHandleCode ?? (frame?.matchedHandle ?? null),
+          handleName: handle?.name ?? frame?.matchedHandle ?? null,
           handleColor: s.selectedHandleColor,
           hingeHardwareCode: hw0?.code != null ? String(hw0.code) : null,
           hingeHardwareName: hw0?.name ?? frame?.matchedHardware ?? null,

@@ -46,6 +46,7 @@ export function ConfiguratorPage() {
   const selectedHandleCode = useConfiguratorStore((s) => s.selectedHandleCode);
   const selectedHandleColor = useConfiguratorStore((s) => s.selectedHandleColor);
   const selectedHingeColor = useConfiguratorStore((s) => s.selectedHingeColor);
+  const selectedHingeHardwareCode = useConfiguratorStore((s) => s.selectedHingeHardwareCode);
   const configurationConfirmed = useConfiguratorStore((s) => s.configurationConfirmed);
 
   const setDimensions = useConfiguratorStore((s) => s.setDimensions);
@@ -58,6 +59,7 @@ export function ConfiguratorPage() {
   const selectHandle = useConfiguratorStore((s) => s.selectHandle);
   const selectHandleColor = useConfiguratorStore((s) => s.selectHandleColor);
   const selectHingeColor = useConfiguratorStore((s) => s.selectHingeColor);
+  const selectHingeHardware = useConfiguratorStore((s) => s.selectHingeHardware);
   const resetConfiguration = useConfiguratorStore((s) => s.resetConfiguration);
   const confirmConfiguration = useConfiguratorStore((s) => s.confirmConfiguration);
 
@@ -557,81 +559,58 @@ export function ConfiguratorPage() {
             </p>
           ) : null}
 
-          {frame?.hingePicture ? (
-            <div
-              style={{
-                marginBottom: 18,
-                borderRadius: 14,
-                overflow: 'hidden',
-                border: '1px solid var(--border-strong)',
-                background: 'var(--surface)',
-              }}
-            >
-              <p
-                style={{
-                  margin: 0,
-                  padding: '12px 14px 8px',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: 'var(--text)',
-                }}
-              >
-                {t.hingePictureSheetLabel}
-              </p>
-              <div style={{ padding: '0 14px 14px' }}>
-                <img
-                  src={frame.hingePicture}
-                  alt={t.hingePictureSheetLabel}
-                  style={{
-                    width: '100%',
-                    maxHeight: 380,
-                    objectFit: 'contain',
-                    display: 'block',
-                    borderRadius: 10,
-                    background: 'var(--surface-muted, rgba(0,0,0,0.04))',
-                  }}
-                />
-              </div>
-            </div>
+          {hingeCalc.matchedHardware.length > 1 && !hingeCalc.usePivot ? (
+            <p style={{ margin: '0 0 12px', fontSize: 14, color: 'var(--text-secondary)' }}>
+              {t.hingePickVariantHint}
+            </p>
           ) : null}
 
-          {hingeCalc.matchedHardware.length > 0 ? (
+          {hingeCalc.matchedHardware.length > 0 && !hingeCalc.usePivot ? (
             <div style={gridStyle}>
-              {hingeCalc.matchedHardware.map((hw) => (
-                <div
-                  key={hw.code ?? hw.name}
-                  style={{
-                    borderRadius: 14,
-                    border: '2px solid var(--border)',
-                    overflow: 'hidden',
-                    background: 'var(--surface)',
-                  }}
-                >
-                  <MediaThumb picture={hw.picture} alt={hw.code ?? hw.name} />
-                  <div style={{ padding: '12px 14px 14px' }}>
-                    <div style={{ fontWeight: 600, fontSize: 14 }}>{hw.code ?? '—'}</div>
-                    <div
-                      style={{
-                        marginTop: 4,
-                        fontSize: 12,
-                        color: 'var(--text-secondary)',
-                        lineHeight: 1.35,
-                      }}
-                    >
-                      {hw.name}
-                    </div>
-                    {hw.pricePerPiece != null ? (
-                      <div style={{ marginTop: 4, fontSize: 12, color: 'var(--text-secondary)' }}>
-                        ¥{hw.pricePerPiece}/pc
+              {hingeCalc.matchedHardware.map((hw) => {
+                const codeKey = hw.code != null ? String(hw.code) : hw.name;
+                const hwCode = hw.code != null ? String(hw.code) : null;
+                const isSelected =
+                  hwCode != null &&
+                  selectedHingeHardwareCode != null &&
+                  selectedHingeHardwareCode.toLowerCase() === hwCode.toLowerCase();
+                const thumb =
+                  hw.picture ??
+                  (hingeCalc.matchedHardware.length === 1 ? frame?.hingePicture : null) ??
+                  null;
+                return (
+                  <SelectableTile
+                    key={codeKey}
+                    selected={isSelected}
+                    disabled={false}
+                    onClick={() => selectHingeHardware(hwCode)}
+                  >
+                    <MediaThumb picture={thumb} alt={hw.code ?? hw.name} />
+                    <div style={{ padding: '12px 14px 14px' }}>
+                      <div style={{ fontWeight: 600, fontSize: 14 }}>{hw.code ?? '—'}</div>
+                      <div
+                        style={{
+                          marginTop: 4,
+                          fontSize: 12,
+                          color: 'var(--text-secondary)',
+                          lineHeight: 1.35,
+                        }}
+                      >
+                        {hw.name}
                       </div>
-                    ) : null}
-                  </div>
-                </div>
-              ))}
+                      {hw.pricePerPiece != null ? (
+                        <div style={{ marginTop: 4, fontSize: 12, color: 'var(--text-secondary)' }}>
+                          ¥{hw.pricePerPiece}/pc
+                        </div>
+                      ) : null}
+                    </div>
+                  </SelectableTile>
+                );
+              })}
             </div>
           ) : null}
 
-          {frame?.matchedHardware && hingeCalc.availableColors.length > 0 ? (
+          {frame?.matchedHardware && hingeCalc.availableColors.length > 0 && !hingeCalc.usePivot ? (
             <>
               <p style={{ margin: '16px 0 12px', fontSize: 14, color: 'var(--text-secondary)' }}>
                 {t.hingeColorLabel}
@@ -656,7 +635,7 @@ export function ConfiguratorPage() {
             </>
           ) : (
             <p style={{ color: 'var(--text-secondary)', fontSize: 15 }}>
-              {frame?.matchedHardware ? '' : t.hingeColorSkip}
+              {frame?.matchedHardware && !hingeCalc.usePivot ? '' : t.hingeColorSkip}
             </p>
           )}
 
@@ -922,7 +901,7 @@ function FrameSectionBlock({
                     {t.frameMountingCover}
                   </div>
                 ) : null}
-                {f.pictureSideView || f.pictureProfile ? (
+                {f.frameCategory === 'cabinet' && (f.pictureSideView || f.pictureProfile) ? (
                   <div
                     role="group"
                     aria-label={`${f.code} reference photos`}

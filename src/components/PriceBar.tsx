@@ -43,8 +43,19 @@ export function PriceBar() {
     const label = fmtFinish(uiLocale, snap.finishCategory);
     chips.push(snap.finishExcelCode ? `${label}·${snap.finishExcelCode}` : label);
   }
-  if (snap.handleCode) chips.push(snap.handleCode);
-  if (snap.hingeColor) chips.push(`${t.stepHingeTitle}·${snap.hingeColor}`);
+  if (snap.handleCode) {
+    const hc = snap.handleColor
+      ? `${String(snap.handleCode).slice(0, 24)}·${snap.handleColor}`
+      : String(snap.handleCode).slice(0, 32);
+    chips.push(`${t.q.handle}:${hc}`);
+  }
+  if (snap.hingeHardwareCode) {
+    chips.push(
+      `${t.q.hinge}:${snap.hingeHardwareCode}${snap.hingeColor ? `·${snap.hingeColor}` : ''}`,
+    );
+  } else if (snap.hingeColor) {
+    chips.push(`${t.stepHingeTitle}·${snap.hingeColor}`);
+  }
   if (quantity > 1) chips.push(`×${quantity}`);
 
   const handleAdd = () => {

@@ -35,6 +35,7 @@ const M = {
     imagePreviewClose: '关闭',
     hingeCodesLabel: '铰链编码',
     hingePictureSheetLabel: '铰链示意图（资料表）',
+    hingePickVariantHint: '请点选一款铰链（多款可选时以所选为准）。',
 
     stepSurfaceTitle: '表面处理',
     stepSurfaceSubtitle: '先选工艺大类，再选具体颜色。与门框不兼容的类别与色样已置灰。',
@@ -140,6 +141,7 @@ const M = {
       selectHandle: '请选择拉手。',
       selectHandleColor: '请选择拉手颜色。',
       selectHingeColor: '请选择铰链颜色。',
+      selectHingeHardware: '请选择铰链型号。',
     },
     q: {
       width: '宽度 W',
@@ -185,6 +187,7 @@ const M = {
     imagePreviewClose: 'Close',
     hingeCodesLabel: 'Hinge codes',
     hingePictureSheetLabel: 'Hinge reference (from datasheet)',
+    hingePickVariantHint: 'Tap a hinge option below when more than one is listed.',
 
     stepSurfaceTitle: 'Surface finish',
     stepSurfaceSubtitle: 'Choose a finish family, then a color. Incompatible options are dimmed.',
@@ -290,6 +293,7 @@ const M = {
       selectHandle: 'Select a handle.',
       selectHandleColor: 'Select a handle color.',
       selectHingeColor: 'Select a hinge color.',
+      selectHingeHardware: 'Select a hinge model.',
     },
     q: {
       width: 'Width W',
