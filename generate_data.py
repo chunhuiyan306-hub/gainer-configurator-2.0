@@ -76,6 +76,29 @@ def _best_image_for_row(ws, excel_row: int, prefer_cols: list[int]):
     return found[0][1]
 
 
+def _best_image_near_row(ws, excel_row: int, prefer_cols: list[int], row_slack: int):
+    """Like _best_image_for_row but allow anchor row within ±row_slack (Excel paste offset)."""
+    found = []
+    for img in ws._images or []:
+        fr = img.anchor._from
+        er = fr.row + 1
+        if abs(er - excel_row) > row_slack:
+            continue
+        col = fr.col + 1
+        found.append((abs(er - excel_row), col, img))
+    if not found:
+        return None
+    found.sort(key=lambda x: (x[0], x[1]))
+    best_d = found[0][0]
+    tier = [x for x in found if x[0] == best_d]
+    for pc in prefer_cols:
+        for _d, col, im in tier:
+            if col == pc:
+                return im
+    tier.sort(key=lambda x: x[1])
+    return tier[0][2]
+
+
 def _image_at_row_col(ws, excel_row: int, col_1based: int):
     """Single embedded image anchored exactly on (row, col)."""
     for img in ws._images or []:
@@ -91,6 +114,49 @@ def _save_image_at_cell(ws, excel_row: int, col_1based: int, subdir: str, basena
     if not im:
         return None
     return _save_catalog_image(im, subdir, basename)
+
+
+def _existing_catalog_url(subdir: str, basename: str) -> str | None:
+    """If a file was already generated (or added manually), reuse its public URL."""
+    safe = _slug(basename)
+    out_dir = CATALOG_DIR / subdir
+    for ext in ("png", "jpg", "jpeg", "webp"):
+        p = out_dir / f"{safe}.{ext}"
+        if p.is_file():
+            return f"/assets/catalog/{subdir}/{safe}.{ext}"
+    return None
+
+
+def _extract_cabinet_door_image(
+    ws,
+    excel_row: int,
+    col_1based: int,
+    subdir: str,
+    basename: str,
+    *,
+    prefer_cols: list[int],
+    row_slack: int = 0,
+) -> str | None:
+    """
+    Extract embedded image for Cabinet Door sheet cells.
+    Tries exact (row,col), then same-row preferred columns, then ±row_slack row;
+    finally reuses an existing file on disk (e.g. last good export).
+    """
+    order: list[int] = []
+    for c in [col_1based, *prefer_cols]:
+        if c not in order:
+            order.append(c)
+
+    im = _image_at_row_col(ws, excel_row, col_1based)
+    if not im:
+        im = _best_image_for_row(ws, excel_row, order)
+    if not im and row_slack > 0:
+        im = _best_image_near_row(ws, excel_row, order, row_slack=row_slack)
+    if im:
+        url = _try_save_catalog_image(im, subdir, basename)
+        if url:
+            return url
+    return _existing_catalog_url(subdir, basename)
 
 
 def _worksheet(wb, *names: str):
@@ -113,6 +179,14 @@ def _save_catalog_image(img, subdir: str, basename: str) -> str:
     out_path = out_dir / f"{safe}.{ext}"
     out_path.write_bytes(img._data())
     return f"/assets/catalog/{subdir}/{safe}.{ext}"
+
+
+def _try_save_catalog_image(img, subdir: str, basename: str) -> str | None:
+    """Some Excel DISPIMG / linked drawings raise on read; skip and fall back."""
+    try:
+        return _save_catalog_image(img, subdir, basename)
+    except (ValueError, OSError, TypeError):
+        return None
 
 
 def _extract_row_images(ws, subdir: str, code_col_1based: int, prefer_cols: list[int], min_row: int = 2):
@@ -480,11 +554,25 @@ for r in range(3, ws_cab.max_row + 1):
     code = str(code_cell).strip()
     frame_id = f"{category}-{code}"
 
-    # C, D, E = main / side / profile only (never use hinge or other cols for door strip)
-    picture_main = _save_image_at_cell(ws_cab, r, 3, "cabinet-door", f"{frame_id}-main")
-    picture_side = _save_image_at_cell(ws_cab, r, 4, "cabinet-door", f"{frame_id}-side")
-    picture_profile = _save_image_at_cell(ws_cab, r, 5, "cabinet-door", f"{frame_id}-profile")
-    hinge_picture = _save_image_at_cell(ws_cab, r, 18, "cabinet-door", f"{frame_id}-hinge")
+    # C, D, E = main / side / profile; R = hinge. Main allows ±1 row for 房门 paste offset; others stay same-row.
+    picture_main = _extract_cabinet_door_image(
+        ws_cab,
+        r,
+        3,
+        "cabinet-door",
+        f"{frame_id}-main",
+        prefer_cols=[3, 4, 5, 2, 6],
+        row_slack=1,
+    )
+    picture_side = _extract_cabinet_door_image(
+        ws_cab, r, 4, "cabinet-door", f"{frame_id}-side", prefer_cols=[4, 3, 5]
+    )
+    picture_profile = _extract_cabinet_door_image(
+        ws_cab, r, 5, "cabinet-door", f"{frame_id}-profile", prefer_cols=[5, 4, 3]
+    )
+    hinge_picture = _extract_cabinet_door_image(
+        ws_cab, r, 18, "cabinet-door", f"{frame_id}-hinge", prefer_cols=[18, 17, 16]
+    )
     # List thumbnail: column C; if empty, fall back so the card is not blank
     picture = picture_main or picture_side or picture_profile
     pics = [u for u in (picture_main, picture_side, picture_profile) if u]
@@ -746,6 +834,20 @@ for row in raw["hardware"][1:]:
     else:
         pic = hardware_name_pics.get(_slug(clean_name))
 
+    if code and not pic:
+        pic = _existing_catalog_url("hardware", str(code).strip())
+    # Blum cup hinge row often has no embedded image; reuse on-disk Blum art or Sensys shot.
+    if not pic and code and str(code).strip().upper().replace(" ", "") in ("HG-BLUM", "HGBLUM"):
+        for fb in ("HG-BLUM", "Pipe_Hinge_salichi_blum_", "HG-SEN"):
+            pic = _existing_catalog_url("hardware", fb)
+            if pic:
+                break
+    if not pic and "blum" in clean_name.lower() and "cup" in clean_name.lower():
+        for fb in ("HG-BLUM", "Pipe_Hinge_salichi_blum_", "HG-SEN"):
+            pic = _existing_catalog_url("hardware", fb)
+            if pic:
+                break
+
     hardware_list.append({
         "code": code,
         "name": clean_name,
@@ -753,6 +855,20 @@ for row in raw["hardware"][1:]:
         "pricePerPiece": price,
         "picture": pic,
     })
+
+# HG-BLUM row often has empty price cell; mirror Sensys until Excel is filled.
+_sen_row = next(
+    (x for x in hardware_list if str(x.get("code") or "").strip().upper() == "HG-SEN"),
+    None,
+)
+_sen_price = _sen_row.get("pricePerPiece") if _sen_row else None
+for _x in hardware_list:
+    if (
+        str(_x.get("code") or "").strip().upper() == "HG-BLUM"
+        and _x.get("pricePerPiece") is None
+        and _sen_price is not None
+    ):
+        _x["pricePerPiece"] = _sen_price
 
 # Placeholder row when Cabinet Door references a hinge code missing from the hardware sheet
 _hw_codes_norm = {

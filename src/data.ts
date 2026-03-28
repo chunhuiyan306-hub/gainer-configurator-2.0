@@ -218,8 +218,8 @@ export const frames = [
     pictureSideView: '/assets/catalog/cabinet-door/cabinet-GM023-side.png',
     pictureProfile: '/assets/catalog/cabinet-door/cabinet-GM023-profile.png',
     hingePicture: '/assets/catalog/cabinet-door/cabinet-GM023-hinge.png',
-    pictures: ['/assets/catalog/cabinet-door/cabinet-GM023-side.png', '/assets/catalog/cabinet-door/cabinet-GM023-profile.png'],
-    picture: '/assets/catalog/cabinet-door/cabinet-GM023-side.png',
+    pictures: ['/assets/catalog/cabinet-door/cabinet-GM023-main.png', '/assets/catalog/cabinet-door/cabinet-GM023-side.png', '/assets/catalog/cabinet-door/cabinet-GM023-profile.png'],
+    picture: '/assets/catalog/cabinet-door/cabinet-GM023-main.png',
   },
 {
     id: 'cabinet-GM094',
@@ -2115,8 +2115,8 @@ export const hardwareList = [
     code: 'HG-BLUM',
     name: 'Blum Cup Hinge',
     allowedColors: ['black', 'silver'],
-    pricePerPiece: null,
-    picture: null,
+    pricePerPiece: 78,
+    picture: '/assets/catalog/hardware/HG-BLUM.png',
   },
 {
     code: 'HG-SEN',
