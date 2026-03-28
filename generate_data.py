@@ -17,6 +17,7 @@ Override path: set env GAINER_EXCEL to the .xlsx file.
 
 import os
 import re
+import shutil
 import textwrap
 from pathlib import Path
 
@@ -190,7 +191,7 @@ def _try_save_catalog_image(img, subdir: str, basename: str) -> str | None:
 
 
 def _extract_row_images(ws, subdir: str, code_col_1based: int, prefer_cols: list[int], min_row: int = 2):
-    """Map product code (str) -> public URL."""
+    """Map product code (str) -> public URL. Skips broken DISPIMG reads; keeps prior file on disk if any."""
     mapping = {}
     for r in range(min_row, ws.max_row + 1):
         code = ws.cell(r, code_col_1based).value
@@ -198,9 +199,13 @@ def _extract_row_images(ws, subdir: str, code_col_1based: int, prefer_cols: list
             continue
         key = str(code).strip()
         im = _best_image_for_row(ws, r, prefer_cols)
-        if not im:
-            continue
-        mapping[key] = _save_catalog_image(im, subdir, key)
+        url = None
+        if im:
+            url = _try_save_catalog_image(im, subdir, key)
+        if not url:
+            url = _existing_catalog_url(subdir, key)
+        if url:
+            mapping[key] = url
     return mapping
 
 
@@ -213,15 +218,34 @@ def _extract_color_sheet(ws, subdir: str, min_row: int = 2):
         if not name and not code:
             continue
         im = _best_image_for_row(ws, r, [3, 1, 2])
-        if not im:
-            continue
         key = str(code).strip() if code else _slug(name)
-        url = _save_catalog_image(im, subdir, key)
+        url = None
+        if im:
+            url = _try_save_catalog_image(im, subdir, key)
+        if not url:
+            url = _existing_catalog_url(subdir, key)
+        if not url:
+            continue
         if code:
             mapping[str(code).strip()] = url
         if name:
             mapping[_slug(name)] = url
     return mapping
+
+
+def _copy_catalog_asset(subdir: str, src_key: str, dst_key: str) -> str | None:
+    """Copy an existing catalog file (e.g. reuse G31 photo for G32 when row has no drawing)."""
+    out_dir = CATALOG_DIR / subdir
+    src_safe = _slug(src_key)
+    dst_safe = _slug(dst_key)
+    for ext in ("png", "jpg", "jpeg", "webp"):
+        sp = out_dir / f"{src_safe}.{ext}"
+        if not sp.is_file():
+            continue
+        dp = out_dir / f"{dst_safe}.{ext}"
+        shutil.copy2(sp, dp)
+        return f"/assets/catalog/{subdir}/{dst_safe}.{ext}"
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -248,6 +272,12 @@ _ws_handle = _worksheet(wb, "handle")
 _ws_cab = _worksheet(wb, "Cabinet Door", "cabinet door")
 
 glass_pics = _extract_row_images(_ws_glass, "glass", 2, [3, 2])
+# Row has no embedded image anchored on that line (e.g. G32) — reuse closest SKU photo until sheet is fixed.
+for _gt, _gs in (("G32", "G31"),):  # golden tinted coated ≈ golden tinted
+    if _gt not in glass_pics:
+        _u = _copy_catalog_asset("glass", _gs, _gt)
+        if _u:
+            glass_pics[_gt] = _u
 leather_pics = _extract_row_images(_ws_leather, "leather", 1, [3, 2])
 wood_pics = _extract_row_images(_ws_wood, "wood-veneer", 2, [1, 2])
 quartz_pics = _extract_row_images(_ws_quartz, "quartz", 3, [2, 3])

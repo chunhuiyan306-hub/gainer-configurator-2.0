@@ -1184,7 +1184,7 @@ export const glassList = [
     silkScreen: false,
     pricingType: 'custom',
     priceSqm: null,
-    picture: null,
+    picture: '/assets/catalog/glass/G32.png',
   },
 {
     code: 'G33',

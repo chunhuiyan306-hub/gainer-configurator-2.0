@@ -23,6 +23,9 @@ export function MediaThumb({
     borderRadius: 12,
     overflow: 'hidden',
     flexShrink: 0,
+    /* White / near-white swatches (喷涂、浅白岩板) need contrast against the card */
+    background: 'linear-gradient(180deg, #f0f0f0 0%, #e4e4e4 100%)',
+    boxShadow: 'inset 0 0 0 1px rgba(0, 0, 0, 0.08)',
     ...style,
   };
 
