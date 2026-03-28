@@ -14,6 +14,8 @@ import {
   surfaceFinishes,
   hardwareList,
   handleList,
+  frameStandardGlassPricingByCode,
+  getHardwareByCode,
 } from './data';
 import { msg, readStoredLocale, writeStoredLocale, type UiLocale } from './translations';
 
@@ -125,53 +127,6 @@ export interface CartItem {
 }
 
 // =============================================================================
-// Standard Glass Pricing Map (frame code → sqm price by glass tier)
-//
-// Extracted from the original Excel "price" column. These are *combined*
-// frame + standard-glass prices. Frames not listed here have per-piece
-// or TBA pricing and fall through to the custom branch.
-// =============================================================================
-
-interface FrameGlassPricing {
-  normalGlass: number | null;
-  blackGlass: number | null;
-  coatedGlass: number | null;
-}
-
-const STANDARD_GLASS_CODES = new Set(['G01', 'G33', 'G36']);
-
-const frameGlassPriceMap: Record<string, FrameGlassPricing> = {
-  GM004:  { normalGlass: 680,  blackGlass: 760,  coatedGlass: 830  },
-  GM090:  { normalGlass: 380,  blackGlass: 460,  coatedGlass: 530  },
-  GM023:  { normalGlass: 480,  blackGlass: 560,  coatedGlass: 630  },
-  MK118:  { normalGlass: 580,  blackGlass: 660,  coatedGlass: 730  },
-  MK336:  { normalGlass: 850,  blackGlass: 930,  coatedGlass: 1000 },
-  GM054:  { normalGlass: 580,  blackGlass: 660,  coatedGlass: 730  },
-  MK162:  { normalGlass: 680,  blackGlass: 760,  coatedGlass: 830  },
-  GM106:  { normalGlass: 580,  blackGlass: 660,  coatedGlass: 730  },
-  MK169:  { normalGlass: 680,  blackGlass: 760,  coatedGlass: 830  },
-  MK073:  { normalGlass: 680,  blackGlass: 760,  coatedGlass: 830  },
-  GM073:  { normalGlass: 780,  blackGlass: 860,  coatedGlass: 930  },
-  GM072:  { normalGlass: 680,  blackGlass: 760,  coatedGlass: 830  },
-  MK304:  { normalGlass: 680,  blackGlass: 760,  coatedGlass: 830  },
-  GM060:  { normalGlass: 580,  blackGlass: 660,  coatedGlass: 730  },
-  GM043:  { normalGlass: 680,  blackGlass: 760,  coatedGlass: 830  },
-  GM094:  { normalGlass: 380,  blackGlass: 460,  coatedGlass: 530  },
-};
-
-function resolveStandardGlassPrice(
-  frameCode: string,
-  glassCode: string,
-): number | null {
-  const tier = frameGlassPriceMap[frameCode];
-  if (!tier) return null;
-  if (glassCode === 'G01') return tier.normalGlass;
-  if (glassCode === 'G33') return tier.normalGlass;
-  if (glassCode === 'G36') return tier.blackGlass;
-  return null;
-}
-
-// =============================================================================
 // Store State Interface
 // =============================================================================
 
@@ -183,7 +138,7 @@ interface ConfiguratorState {
   height: number | null;
   quantity: number;
 
-  // --- Step 2: Frame ---
+  // --- Step 2: Frame (stores Frame.id, e.g. cabinet-GM004) ---
   selectedFrameCode: string | null;
 
   // --- Step 3: Surface Finish ---
@@ -331,10 +286,30 @@ const clearFromFiller: Partial<ConfiguratorState> = {
 // Frame Lookup Helper
 // =============================================================================
 
-function findFrame(code: string | null): Frame | null {
-  if (!code) return null;
-  const found = frames.find((f) => f.code === code);
-  return found ?? null;
+function findFrame(idOrLegacyCode: string | null): Frame | null {
+  if (!idOrLegacyCode) return null;
+  const byId = frames.find((f) => f.id === idOrLegacyCode);
+  if (byId) return byId;
+  const sameCode = frames.filter((f) => f.code === idOrLegacyCode);
+  return sameCode.length === 1 ? sameCode[0] : null;
+}
+
+// Standard glass G01/G33/G36 tier prices — from Excel via generate_data.py
+const STANDARD_GLASS_CODES = new Set(['G01', 'G33', 'G36']);
+
+function resolveStandardGlassPrice(
+  selectedFrameKey: string | null,
+  glassCode: string,
+): number | null {
+  if (!selectedFrameKey) return null;
+  const f = findFrame(selectedFrameKey);
+  const frameCode = f?.code ?? selectedFrameKey;
+  const tier = frameStandardGlassPricingByCode[frameCode];
+  if (!tier) return null;
+  if (glassCode === 'G01') return tier.normalGlass;
+  if (glassCode === 'G33') return tier.normalGlass;
+  if (glassCode === 'G36') return tier.blackGlass;
+  return null;
 }
 
 // =============================================================================
@@ -420,6 +395,18 @@ function _sigBigrams(text: string): Set<string> {
 }
 
 function findMatchedHardware(frame: Frame): Hardware[] {
+  const fromCodes: Hardware[] = [];
+  const seen = new Set<string>();
+  for (const c of frame.hingeCodes) {
+    const h = getHardwareByCode(c);
+    if (!h?.code) continue;
+    const k = String(h.code).toLowerCase();
+    if (seen.has(k)) continue;
+    seen.add(k);
+    fromCodes.push(h);
+  }
+  if (fromCodes.length > 0) return fromCodes;
+
   if (!frame.matchedHardware) return [];
   const rawNorm = _normalizeHwText(frame.matchedHardware);
   const rawTokens = rawNorm.split(/[/&,]/).map((s) => s.trim()).filter(Boolean);
@@ -1157,20 +1144,22 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
 
         // --- Frame + Standard Filler combined price ---
         if (selectedFrameCode && selectedFillerCode) {
+          const frame = findFrame(selectedFrameCode);
+          const labelCode = frame?.code ?? selectedFrameCode;
           const isStandard = STANDARD_GLASS_CODES.has(selectedFillerCode);
           if (isStandard) {
             const sqmPrice = resolveStandardGlassPrice(selectedFrameCode, selectedFillerCode);
             if (sqmPrice !== null) {
               const lineTotal = Math.round(area * sqmPrice * 100) / 100;
               lines.push({
-                label: L.frameGlass(selectedFrameCode, selectedFillerCode),
+                label: L.frameGlass(labelCode, selectedFillerCode),
                 amount: lineTotal,
                 status: 'calculated',
               });
               runningTotal += lineTotal;
             } else {
               lines.push({
-                label: L.frameGlass(selectedFrameCode, selectedFillerCode),
+                label: L.frameGlass(labelCode, selectedFillerCode),
                 amount: null,
                 status: 'tba',
               });
@@ -1178,15 +1167,17 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
             }
           } else {
             lines.push({
-              label: L.frameFiller(selectedFrameCode, selectedFillerCode),
+              label: L.frameFiller(labelCode, selectedFillerCode),
               amount: null,
               status: 'tba',
             });
             hasCustom = true;
           }
         } else if (selectedFrameCode) {
+          const frame = findFrame(selectedFrameCode);
+          const labelCode = frame?.code ?? selectedFrameCode;
           lines.push({
-            label: L.frameAwaitFiller(selectedFrameCode),
+            label: L.frameAwaitFiller(labelCode),
             amount: null,
             status: 'tba',
           });
@@ -1274,7 +1265,7 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
           if (frame) {
             const { disabled, reason } = checkFrameFitsSize(frame, s.width, s.height);
             if (disabled && reason)
-              errors.push(V.frameNoFit(s.selectedFrameCode, reason));
+              errors.push(V.frameNoFit(frame.code, reason));
           }
         }
 
@@ -1350,7 +1341,7 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
         }
 
         const dim = `${String(width).padStart(4, '0')}x${String(height).padStart(4, '0')}`;
-        return `G-${selectedFrameCode}-${selectedFillerCode}-${finishSeg}-${handleSeg}-${hingeSeg}-${dim}`;
+        return `G-${frame.code}-${selectedFillerCode}-${finishSeg}-${handleSeg}-${hingeSeg}-${dim}`;
       },
 
       // =====================================================================
@@ -1358,7 +1349,8 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
       // =====================================================================
       getGeneratedSku: (): string => {
         const s = get();
-        const frame = s.selectedFrameCode ?? '000';
+        const fr = findFrame(s.selectedFrameCode);
+        const frame = fr?.code ?? s.selectedFrameCode ?? '000';
         const fin = parseFinishColorSelectionId(s.selectedFinishColorCode);
         const finishSeg =
           fin?.excelCode && String(fin.excelCode).trim() !== ''
@@ -1438,7 +1430,7 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
           widthMm: w,
           heightMm: h,
           areaM2: area,
-          frameCode: s.selectedFrameCode,
+          frameCode: frame?.code ?? null,
           frameDoorType: frame?.doorType ?? null,
           finishName: fin?.name ?? null,
           finishExcelCode: fin?.excelCode ?? null,

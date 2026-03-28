@@ -24,6 +24,13 @@ const M = {
 
     stepFrameTitle: '门框型材',
     stepFrameSubtitle: '不符合当前 W×H 的门框已置灰，且不可选择。',
+    frameSectionCabinet: '柜门',
+    frameSectionRoom: '房门',
+    frameDoorThickness: (d: number) => `门厚 ${d} mm`,
+    frameProfilePrefix: '型材规格：',
+    frameMountingInsert: '安装：卡槽（Insert）',
+    frameMountingCover: '安装：贴面（Cover）',
+    hingeCodesLabel: '铰链编码',
 
     stepSurfaceTitle: '表面处理',
     stepSurfaceSubtitle: '先选工艺大类，再选具体颜色。与门框不兼容的类别与色样已置灰。',
@@ -163,6 +170,13 @@ const M = {
 
     stepFrameTitle: 'Frame profile',
     stepFrameSubtitle: 'Frames that do not fit the current W×H are dimmed and cannot be selected.',
+    frameSectionCabinet: 'Cabinet doors',
+    frameSectionRoom: 'Interior / room doors',
+    frameDoorThickness: (d: number) => `Door thickness ${d} mm`,
+    frameProfilePrefix: 'Profile: ',
+    frameMountingInsert: 'Mounting: insert (groove)',
+    frameMountingCover: 'Mounting: cover (overlay)',
+    hingeCodesLabel: 'Hinge codes',
 
     stepSurfaceTitle: 'Surface finish',
     stepSurfaceSubtitle: 'Choose a finish family, then a color. Incompatible options are dimmed.',

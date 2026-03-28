@@ -1,12 +1,14 @@
-import { useEffect, useState, type ReactNode } from 'react';
-import { useConfiguratorStore, type FinishCategory } from './useConfiguratorStore';
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
+import { useConfiguratorStore, type FinishCategory, type FrameOption } from './useConfiguratorStore';
 import { StepSection } from './components/StepSection';
 import { SelectableTile } from './components/SelectableTile';
-import { MediaThumb } from './components/MediaThumb';
+import { FramePicturesStrip, MediaThumb } from './components/MediaThumb';
 import { PriceBar } from './components/PriceBar';
 import { QuotationSheet } from './components/QuotationSheet';
 import { CartDrawer } from './components/CartDrawer';
 import { msg, type UiLocale } from './translations';
+
+type UiMessages = ReturnType<typeof msg>;
 
 function finishColorId(category: FinishCategory, code: string | null, name: string) {
   return `${category}::${code ?? ''}::${name}`;
@@ -81,6 +83,9 @@ export function ConfiguratorPage() {
   const handleColorOptions = getHandleColorOptions();
   const hingeCalc = getHingeCalculation();
   const frame = getSelectedFrame();
+
+  const cabinetFrameOpts = frameOptions.filter((o) => o.frame.frameCategory === 'cabinet');
+  const roomFrameOpts = frameOptions.filter((o) => o.frame.frameCategory === 'room');
 
   const gridStyle = {
     display: 'grid',
@@ -251,38 +256,22 @@ export function ConfiguratorPage() {
           title={t.stepFrameTitle}
           subtitle={t.stepFrameSubtitle}
         >
-          <div style={gridStyle}>
-            {frameOptions.map(({ frame: f, disabled }) => {
-              const selected = selectedFrameCode === f.code;
-              return (
-                <SelectableTile
-                  key={f.code}
-                  selected={selected}
-                  disabled={disabled}
-                  onClick={() => selectFrame(f.code)}
-                >
-                  <MediaThumb picture={f.picture} alt={f.code} disabled={disabled} />
-                  <div style={{ padding: '12px 14px 14px' }}>
-                    <div style={{ fontWeight: 600, fontSize: 15 }}>{f.code}</div>
-                    <div
-                      style={{
-                        marginTop: 4,
-                        fontSize: 12,
-                        color: 'var(--text-secondary)',
-                        lineHeight: 1.35,
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden',
-                      }}
-                    >
-                      {f.doorType}
-                    </div>
-                  </div>
-                </SelectableTile>
-              );
-            })}
-          </div>
+          <FrameSectionBlock
+            title={t.frameSectionCabinet}
+            options={cabinetFrameOpts}
+            gridStyle={gridStyle}
+            selectedFrameCode={selectedFrameCode}
+            selectFrame={selectFrame}
+            t={t}
+          />
+          <FrameSectionBlock
+            title={t.frameSectionRoom}
+            options={roomFrameOpts}
+            gridStyle={gridStyle}
+            selectedFrameCode={selectedFrameCode}
+            selectFrame={selectFrame}
+            t={t}
+          />
         </StepSection>
 
         {/* Step 3 — Surface */}
@@ -551,6 +540,20 @@ export function ConfiguratorPage() {
             </p>
           ) : null}
 
+          {frame?.hingeCodes && frame.hingeCodes.length > 0 ? (
+            <p
+              style={{
+                margin: '0 0 12px',
+                fontSize: 14,
+                color: 'var(--text-secondary)',
+                lineHeight: 1.45,
+              }}
+            >
+              <strong style={{ color: 'var(--text)' }}>{t.hingeCodesLabel}:</strong>{' '}
+              {frame.hingeCodes.join(' / ')}
+            </p>
+          ) : null}
+
           {hingeCalc.matchedHardware.length > 0 ? (
             <div style={gridStyle}>
               {hingeCalc.matchedHardware.map((hw) => (
@@ -681,6 +684,97 @@ export function ConfiguratorPage() {
       {/* Keep finish color id in sync when category changes — store clears color on category change; ensure id format matches */}
       <FinishColorSync />
     </>
+  );
+}
+
+function FrameSectionBlock({
+  title,
+  options,
+  gridStyle,
+  selectedFrameCode,
+  selectFrame,
+  t,
+}: {
+  title: string;
+  options: FrameOption[];
+  gridStyle: CSSProperties;
+  selectedFrameCode: string | null;
+  selectFrame: (id: string | null) => void;
+  t: UiMessages;
+}) {
+  if (options.length === 0) return null;
+
+  return (
+    <section style={{ marginBottom: 28 }}>
+      <h3
+        style={{
+          margin: '0 0 14px',
+          fontSize: 17,
+          fontWeight: 600,
+          letterSpacing: '-0.02em',
+        }}
+      >
+        {title}
+      </h3>
+      <div style={gridStyle}>
+        {options.map(({ frame: f, disabled }) => {
+          const selected = selectedFrameCode === f.id;
+          return (
+            <SelectableTile
+              key={f.id}
+              selected={selected}
+              disabled={disabled}
+              onClick={() => selectFrame(f.id)}
+            >
+              <FramePicturesStrip
+                pictures={f.pictures}
+                fallbackPicture={f.picture}
+                alt={f.code}
+                disabled={disabled}
+              />
+              <div style={{ padding: '12px 14px 14px' }}>
+                <div style={{ fontWeight: 600, fontSize: 15 }}>{f.code}</div>
+                <div
+                  style={{
+                    marginTop: 4,
+                    fontSize: 12,
+                    color: 'var(--text-secondary)',
+                    lineHeight: 1.35,
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden',
+                  }}
+                >
+                  {f.doorType.replace(/\n/g, ' ')}
+                </div>
+                {f.frameProfileLabel ? (
+                  <div style={{ marginTop: 6, fontSize: 11, color: 'var(--text-secondary)' }}>
+                    {t.frameProfilePrefix}
+                    {f.frameProfileLabel.replace(/\n/g, ' ')}
+                  </div>
+                ) : null}
+                {f.doorThickness != null ? (
+                  <div style={{ marginTop: 4, fontSize: 11, color: 'var(--text-secondary)' }}>
+                    {t.frameDoorThickness(f.doorThickness)}
+                  </div>
+                ) : null}
+                {f.mountingType === 'insert' ? (
+                  <div style={{ marginTop: 4, fontSize: 11, color: 'var(--accent)' }}>
+                    {t.frameMountingInsert}
+                  </div>
+                ) : null}
+                {f.mountingType === 'cover' ? (
+                  <div style={{ marginTop: 4, fontSize: 11, color: 'var(--accent)' }}>
+                    {t.frameMountingCover}
+                  </div>
+                ) : null}
+              </div>
+            </SelectableTile>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 

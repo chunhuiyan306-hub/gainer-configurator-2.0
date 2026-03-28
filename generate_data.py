@@ -1,6 +1,16 @@
 """
 Data processing script: reads the Excel workbook (318 door information) and
 extracts embedded images into public/assets/catalog/, then writes src/data.ts.
+
+Cabinet Door sheet (row 2 = header, data from row 3):
+  - Rows above the \"Interior DooR\" divider = 柜门 (frameCategory cabinet).
+  - Rows below = 房门 (frameCategory room).
+  - Door photos: up to three images per row (prefers columns C–E, then nearby cols).
+  - Profile / Cover|Insert from column F; hinge codes from column P (matched to hardware).
+
+Rows using Excel DISPIMG() without true embedded drawings will have no extracted photos;
+paste images into the sheet or add files under public/assets/catalog/cabinet-door/ manually.
+
 Override path: set env GAINER_EXCEL to the .xlsx file.
 """
 
@@ -65,6 +75,62 @@ def _best_image_for_row(ws, excel_row: int, prefer_cols: list[int]):
     return found[0][1]
 
 
+def _image_at_row_col(ws, excel_row: int, col_1based: int):
+    """Single embedded image anchored exactly on (row, col)."""
+    for img in ws._images or []:
+        fr = img.anchor._from
+        if fr.row + 1 == excel_row and fr.col + 1 == col_1based:
+            return img
+    return None
+
+
+def _door_pictures_for_row(ws, excel_row: int, frame_id: str, subdir: str, max_n: int = 3):
+    """Up to three product images per row: prefer C–E, then other door columns, then R (18)."""
+    found = []
+    for img in ws._images or []:
+        fr = img.anchor._from
+        if fr.row + 1 != excel_row:
+            continue
+        found.append((fr.col + 1, img))
+    found.sort(key=lambda x: x[0])
+    chosen = []
+    used_ids = set()
+
+    def take_for_cols(cols: list[int]):
+        nonlocal chosen
+        for pc in cols:
+            for c, im in found:
+                if c != pc or id(im) in used_ids:
+                    continue
+                chosen.append(im)
+                used_ids.add(id(im))
+                if len(chosen) >= max_n:
+                    return
+
+    take_for_cols([3, 4, 5])
+    if len(chosen) < max_n:
+        for c, im in found:
+            if id(im) in used_ids or len(chosen) >= max_n:
+                continue
+            if 2 <= c <= 7 or c in (16, 17, 18):
+                chosen.append(im)
+                used_ids.add(id(im))
+    urls = []
+    for i, im in enumerate(chosen[:max_n]):
+        urls.append(_save_catalog_image(im, subdir, f"{frame_id}-{i + 1}"))
+    return urls
+
+
+def _worksheet(wb, *names: str):
+    """Resolve first existing sheet by case-insensitive name."""
+    lower_map = {n.lower(): n for n in wb.sheetnames}
+    for n in names:
+        key = n.lower()
+        if key in lower_map:
+            return wb[lower_map[key]]
+    raise KeyError(f"No sheet among {names!r} in {wb.sheetnames!r}")
+
+
 def _save_catalog_image(img, subdir: str, basename: str) -> str:
     ext = (img.format or "png").lower()
     if ext == "jpeg":
@@ -127,15 +193,22 @@ def _sheet_rows(name: str):
 print(f"Loading: {XLSX_PATH}")
 CATALOG_DIR.mkdir(parents=True, exist_ok=True)
 
-frame_pics = _extract_row_images(wb["cabinet door"], "cabinet-door", 1, [3, 2, 4, 5, 6])
-glass_pics = _extract_row_images(wb["glass"], "glass", 2, [3, 2])
-leather_pics = _extract_row_images(wb["leather"], "leather", 1, [3, 2])
-wood_pics = _extract_row_images(wb["wood veneer"], "wood-veneer", 2, [1, 2])
-quartz_pics = _extract_row_images(wb["quartz stone"], "quartz", 3, [2, 3])
-anod_pics = _extract_color_sheet(wb["Anodized Color"], "anodize")
-soft_pics = _extract_color_sheet(wb["Sprayed Soft-Touch Color"], "spray-soft")
-metal_pics = _extract_color_sheet(wb["Sprayed Metallic Color"], "spray-metallic")
-hardware_pics = _extract_row_images(wb["hardware"], "hardware", 4, [2, 1, 3])
+_ws_glass = _worksheet(wb, "glass")
+_ws_leather = _worksheet(wb, "leather")
+_ws_wood = _worksheet(wb, "wood veneer")
+_ws_quartz = _worksheet(wb, "quartz stone")
+_ws_hw = _worksheet(wb, "hardware")
+_ws_handle = _worksheet(wb, "handle")
+_ws_cab = _worksheet(wb, "Cabinet Door", "cabinet door")
+
+glass_pics = _extract_row_images(_ws_glass, "glass", 2, [3, 2])
+leather_pics = _extract_row_images(_ws_leather, "leather", 1, [3, 2])
+wood_pics = _extract_row_images(_ws_wood, "wood-veneer", 2, [1, 2])
+quartz_pics = _extract_row_images(_ws_quartz, "quartz", 3, [2, 3])
+anod_pics = _extract_color_sheet(_worksheet(wb, "Anodized Color"), "anodize")
+soft_pics = _extract_color_sheet(_worksheet(wb, "Sprayed Soft-Touch Color"), "spray-soft")
+metal_pics = _extract_color_sheet(_worksheet(wb, "Sprayed Metallic Color"), "spray-metallic")
+hardware_pics = _extract_row_images(_ws_hw, "hardware", 4, [2, 1, 3])
 
 # Also extract images for hardware rows that have no code, keyed by slugified name
 def _extract_hardware_name_images(ws, subdir, prefer_cols, min_row=2):
@@ -152,8 +225,8 @@ def _extract_hardware_name_images(ws, subdir, prefer_cols, min_row=2):
         mapping[key] = _save_catalog_image(im, subdir, key)
     return mapping
 
-hardware_name_pics = _extract_hardware_name_images(wb["hardware"], "hardware", [2, 1, 3])
-handle_pics = _extract_row_images(wb["handle"], "handle", 1, [2, 3])
+hardware_name_pics = _extract_hardware_name_images(_ws_hw, "hardware", [2, 1, 3])
+handle_pics = _extract_row_images(_ws_handle, "handle", 1, [2, 3])
 
 raw = {name: _sheet_rows(name) for name in wb.sheetnames}
 
@@ -237,13 +310,67 @@ def parse_door_thickness(notes: str):
     if not notes:
         return None
     notes_flat = notes.replace("\n", " ").replace("：", ":")
-    m = re.search(r'(?:door|Door)\s*thickness\s*:\s*([\d.]+)', notes_flat)
+    m = re.search(r'(?:door|Door)\s*thickness\s*:\s*([\d.]+)', notes_flat, re.I)
+    if m:
+        return float(m.group(1))
+    m = re.search(r'door\s*thickness\s*[：:]\s*([\d.]+)', notes_flat, re.I)
     if m:
         return float(m.group(1))
     m = re.search(r'D\s*=\s*([\d.]+)', notes_flat)
     if m:
         return float(m.group(1))
     return None
+
+
+def parse_frame_profile_mounting(cell):
+    """Excel 'Thinkness' column, e.g. '28mm/Cover', '22mm/insert', '32mm/Aluminum Stripe'."""
+    if not cell or str(cell).strip() in ("\\", ""):
+        return None, None
+    label = str(cell).replace("\n", " ").strip()
+    low = label.lower()
+    mounting = None
+    if "insert" in low:
+        mounting = "insert"
+    elif "cover" in low:
+        mounting = "cover"
+    return label, mounting
+
+
+def parse_glass_prices_cell(text):
+    """Parse 'normal glass:680/m²' style lines from price column."""
+    if not text:
+        return None
+    t = str(text).replace("\n", " ")
+
+    def grab(pat):
+        m = re.search(pat, t, re.I)
+        return int(m.group(1)) if m else None
+
+    out = {
+        "normalGlass": grab(r"normal\s*glass\s*[：:]\s*(\d+)"),
+        "blackGlass": grab(r"black\s*glass\s*[：:]\s*(\d+)"),
+        "coatedGlass": grab(r"coated\s*glass\s*[：:]\s*(\d+)"),
+    }
+    if out["normalGlass"] is None and out["blackGlass"] is None and out["coatedGlass"] is None:
+        return None
+    return out
+
+
+def parse_hinge_codes(raw):
+    if not raw or str(raw).strip() in ("\\", "/", "", "None"):
+        return []
+    parts = re.split(r"[/\n,]+", str(raw))
+    return [p.strip() for p in parts if p.strip() and p.strip() not in ("/", "\\")]
+
+
+def infer_specific_colors_from_filler(std_filler_raw: str):
+    if not std_filler_raw or str(std_filler_raw).strip() in ("\\", "color swatch colors"):
+        return None
+    text = str(std_filler_raw)
+    if "swatch" in text.lower():
+        return None
+    codes = re.findall(r"\b[A-Z]{2,3}\d{2,}[A-Z0-9]*\b", text)
+    return list(dict.fromkeys(codes)) if codes else None
 
 
 def classify_door_type(dt: str):
@@ -332,50 +459,77 @@ def to_ts_val(v):
 
 
 # ---------------------------------------------------------------------------
-# 1. FRAMES (cabinet door)
+# 1. FRAMES — sheet "Cabinet Door": row 2 = header, row 3+ = data;
+#    section divider cell "Interior DooR" starts 房门 (room) category.
+#    Columns (1-based): A code, B material, C–E door photos, F profile/Cover|Insert,
+#    G handle, H surface, I door type, J std filler, K price, … N filler thickness,
+#    O hardware name, P hinge code, Q hardware color, R (hinge img), S notes.
 # ---------------------------------------------------------------------------
-cab_rows = raw["cabinet door"]
-header_cab = cab_rows[0]
+ws_cab = _ws_cab
 frames = []
+frame_standard_glass_prices = {}
 
-for i, row in enumerate(cab_rows[1:], start=1):
-    code = row[0]
-    if not code:
+category = "cabinet"
+for r in range(3, ws_cab.max_row + 1):
+    code_cell = ws_cab.cell(r, 1).value
+    if code_cell is None or str(code_cell).strip() == "":
         continue
-    notes = row[15] if len(row) > 15 else None
-    door_type_raw = row[6]
-    std_filler_raw = row[7]
-    thickness_raw = row[11]
-    handle_raw = row[3]
-    hardware_raw = row[12]
-    hw_color_raw = row[13]
-    surface_raw = row[4]
-    color_raw = row[5]
-    price_raw = row[8]
+    head = str(code_cell).strip()
+    if head.lower() == "cabinet door":
+        continue
+    if re.search(r"interior", head, re.I) and "door" in head.lower():
+        category = "room"
+        continue
+
+    door_type_raw = ws_cab.cell(r, 9).value
+    if not door_type_raw or str(door_type_raw).strip() in ("", "\\"):
+        continue
+
+    code = str(code_cell).strip()
+    frame_id = f"{category}-{code}"
+
+    pics = _door_pictures_for_row(ws_cab, r, frame_id, "cabinet-door", max_n=3)
+    picture = pics[0] if pics else None
+
+    think_raw = ws_cab.cell(r, 6).value
+    frame_profile_label, mounting_type = parse_frame_profile_mounting(think_raw)
+
+    handle_raw = ws_cab.cell(r, 7).value
+    surface_raw = ws_cab.cell(r, 8).value
+    std_filler_raw = ws_cab.cell(r, 10).value
+    price_raw = ws_cab.cell(r, 11).value
+    thickness_raw = ws_cab.cell(r, 14).value
+    hardware_raw = ws_cab.cell(r, 15).value
+    hinge_code_raw = ws_cab.cell(r, 16).value
+    hw_color_raw = ws_cab.cell(r, 17).value
+    notes = ws_cab.cell(r, 19).value
 
     door_type = classify_door_type(door_type_raw)
     allowed_fillers = infer_allowed_fillers(door_type_raw, std_filler_raw)
     filler_thickness = parse_thickness(thickness_raw) if thickness_raw else []
     size_limits = parse_size_limits(notes)
     door_thickness = parse_door_thickness(notes)
-    allowed_finishing = parse_allowed_finishing(surface_raw, color_raw)
+    allowed_finishing = parse_allowed_finishing(surface_raw, None)
 
-    # Specific color codes override (for frames with explicit color codes)
-    specific_colors = None
-    if color_raw and color_raw != "color swatch colors":
-        specific_colors = [c.strip() for c in color_raw.replace("\n", "/").split("/") if c.strip()]
+    specific_colors = infer_specific_colors_from_filler(std_filler_raw)
 
-    # standard fillers
     std_fillers = []
-    if std_filler_raw and std_filler_raw not in ("\\", "color swatch colors"):
-        std_fillers = [s.strip() for s in std_filler_raw.replace("\n", "/").split("/") if s.strip()]
+    if std_filler_raw and str(std_filler_raw).strip() not in ("\\", "color swatch colors"):
+        std_fillers = [s.strip() for s in str(std_filler_raw).replace("\n", "/").split("/") if s.strip()]
 
-    matched_handle = handle_raw.replace("\n", " ").strip() if handle_raw else None
-    matched_hardware = hardware_raw.replace("\n", " ").strip() if hardware_raw else None
+    matched_handle = str(handle_raw).replace("\n", " ").strip() if handle_raw else None
+    matched_hardware = str(hardware_raw).replace("\n", " ").strip() if hardware_raw else None
     hw_colors = parse_hardware_colors(hw_color_raw)
+    hinge_codes = parse_hinge_codes(hinge_code_raw)
+
+    gp = parse_glass_prices_cell(price_raw)
+    if gp:
+        frame_standard_glass_prices[code] = gp
 
     frames.append({
+        "id": frame_id,
         "code": code,
+        "frameCategory": category,
         "doorType": door_type,
         "allowedFillers": allowed_fillers,
         "standardFillers": std_fillers,
@@ -384,10 +538,14 @@ for i, row in enumerate(cab_rows[1:], start=1):
         "specificColors": specific_colors,
         "sizeLimits": size_limits,
         "doorThickness": door_thickness,
+        "frameProfileLabel": frame_profile_label,
+        "mountingType": mounting_type,
         "matchedHandle": matched_handle,
         "matchedHardware": matched_hardware,
+        "hingeCodes": hinge_codes,
         "hardwareColors": hw_colors,
-        "picture": frame_pics.get(str(code).strip()) if code else None,
+        "pictures": pics,
+        "picture": picture,
     })
 
 # ---------------------------------------------------------------------------
@@ -680,8 +838,13 @@ export interface SizeLimits {
   maxH: number | null;
 }
 
+export type FrameCategory = 'cabinet' | 'room';
+export type FrameMountingType = 'insert' | 'cover';
+
 export interface Frame {
+  id: string;
   code: string;
+  frameCategory: FrameCategory;
   doorType: string;
   allowedFillers: readonly string[];
   standardFillers: readonly string[];
@@ -690,10 +853,24 @@ export interface Frame {
   specificColors: readonly string[] | null;
   sizeLimits: SizeLimits;
   doorThickness: number | null;
+  /** Raw Excel profile cell, e.g. "28mm/Cover". */
+  frameProfileLabel: string | null;
+  /** Parsed from profile cell: 卡槽 insert / 贴面 cover. */
+  mountingType: FrameMountingType | null;
   matchedHandle: string | null;
   matchedHardware: string | null;
+  /** Hinge product codes from Excel (e.g. AIRHINGE / HG-BLUM), matched to hardwareList. */
+  hingeCodes: readonly string[];
   hardwareColors: readonly string[];
+  /** Up to three door photos (columns C–E), aluminum frames like GM004. */
+  pictures: readonly string[];
   picture: string | null;
+}
+
+export interface FrameGlassPricing {
+  normalGlass: number | null;
+  blackGlass: number | null;
+  coatedGlass: number | null;
 }
 
 export interface Glass {
@@ -771,9 +948,25 @@ export interface Handle {
 
 # ---- Frames ----
 out_parts.append("\n// ---------------------------------------------------------------------------")
-out_parts.append("// 1. Frames (Cabinet Doors)")
+out_parts.append("// 1. Frames — 柜门 cabinet / 房门 room (same Excel sheet, split by section)")
 out_parts.append("// ---------------------------------------------------------------------------\n")
 out_parts.append(ts_array(frames, "frames"))
+
+# ---- Standard glass combo pricing (parsed from Excel price column) ----
+def _ts_frame_pricing_map(prices: dict) -> str:
+    lines = []
+    for k in sorted(prices.keys()):
+        v = prices[k]
+        inner = ", ".join(
+            f"{x}: {to_ts_val(v[x])}" for x in ("normalGlass", "blackGlass", "coatedGlass")
+        )
+        lines.append(f"  {to_ts_val(k)}: {{ {inner} }}")
+    return "export const frameStandardGlassPricingByCode: Record<string, FrameGlassPricing> = {\n" + ",\n".join(lines) + "\n};\n"
+
+out_parts.append("\n// ---------------------------------------------------------------------------")
+out_parts.append("// 1b. Frame + standard glass (G01/G33/G36 tier) reference pricing from Excel")
+out_parts.append("// ---------------------------------------------------------------------------\n")
+out_parts.append(_ts_frame_pricing_map(frame_standard_glass_prices))
 
 # ---- Glass ----
 out_parts.append("\n// ---------------------------------------------------------------------------")
@@ -814,6 +1007,21 @@ out_parts.append("\n// ---------------------------------------------------------
 out_parts.append("// 7. Hardware (Hinges & Accessories)")
 out_parts.append("// ---------------------------------------------------------------------------\n")
 out_parts.append(ts_array(hardware_list, "hardwareList"))
+
+out_parts.append("""
+export function getHardwareByCode(code: string | null | undefined): Hardware | null {
+  if (!code) return null;
+  const raw = String(code).trim().toLowerCase();
+  const variants = [raw, raw.replace(/^hg-/, ''), `hg-${raw}`];
+  for (const c of variants) {
+    const h = hardwareList.find(
+      (x) => x.code != null && String(x.code).trim().toLowerCase() === c,
+    );
+    if (h) return h;
+  }
+  return null;
+}
+""")
 
 # ---- Handles ----
 out_parts.append("\n// ---------------------------------------------------------------------------")
