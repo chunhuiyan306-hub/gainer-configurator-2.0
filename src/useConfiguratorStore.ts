@@ -1433,9 +1433,8 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
             errors.push(V.handleMountFill);
           } else {
             if (frame.handleWorkflow === 'separate') {
-              const half = 80;
-              if (b < 200) errors.push(V.handleMountBottomMinSeparate);
-              if (b + half > h - 120) errors.push(V.handleMountTopClearance);
+              if (b < 120) errors.push(V.handleMountBottomMinSeparate);
+              if (h - b < 120) errors.push(V.handleMountTopClearance);
             } else {
               if (b < 50) errors.push(V.handleMountBottomMin50);
             }

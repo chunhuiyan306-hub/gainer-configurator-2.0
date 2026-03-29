@@ -74,7 +74,7 @@ export function HandleMountPanel({
         </label>
         <input
           type="number"
-          min={wf === 'separate' ? 200 : 50}
+          min={wf === 'separate' ? 120 : 50}
           value={bottomMm ?? ''}
           onChange={(e) => {
             const v = e.target.value;

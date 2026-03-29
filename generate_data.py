@@ -170,6 +170,14 @@ def _worksheet(wb, *names: str):
     raise KeyError(f"No sheet among {names!r} in {wb.sheetnames!r}")
 
 
+def _worksheet_optional(wb, *names: str):
+    """Same as _worksheet but returns None if the sheet is absent."""
+    try:
+        return _worksheet(wb, *names)
+    except KeyError:
+        return None
+
+
 def _save_catalog_image(img, subdir: str, basename: str) -> str:
     ext = (img.format or "png").lower()
     if ext == "jpeg":
@@ -265,10 +273,10 @@ CATALOG_DIR.mkdir(parents=True, exist_ok=True)
 
 _ws_glass = _worksheet(wb, "glass")
 _ws_leather = _worksheet(wb, "leather")
-_ws_wood = _worksheet(wb, "wood veneer")
+_ws_wood = _worksheet_optional(wb, "wood veneer")
 _ws_quartz = _worksheet(wb, "quartz stone")
 _ws_hw = _worksheet(wb, "hardware")
-_ws_handle = _worksheet(wb, "handle")
+_ws_handle = _worksheet_optional(wb, "handle")
 _ws_cab = _worksheet(wb, "Cabinet Door", "cabinet door")
 
 glass_pics = _extract_row_images(_ws_glass, "glass", 2, [3, 2])
@@ -279,7 +287,9 @@ for _gt, _gs in (("G32", "G31"),):  # golden tinted coated ≈ golden tinted
         if _u:
             glass_pics[_gt] = _u
 leather_pics = _extract_row_images(_ws_leather, "leather", 1, [3, 2])
-wood_pics = _extract_row_images(_ws_wood, "wood-veneer", 2, [1, 2])
+wood_pics = (
+    _extract_row_images(_ws_wood, "wood-veneer", 2, [1, 2]) if _ws_wood is not None else {}
+)
 quartz_pics = _extract_row_images(_ws_quartz, "quartz", 3, [2, 3])
 anod_pics = _extract_color_sheet(_worksheet(wb, "Anodized Color"), "anodize")
 soft_pics = _extract_color_sheet(_worksheet(wb, "Sprayed Soft-Touch Color"), "spray-soft")
@@ -302,7 +312,9 @@ def _extract_hardware_name_images(ws, subdir, prefer_cols, min_row=2):
     return mapping
 
 hardware_name_pics = _extract_hardware_name_images(_ws_hw, "hardware", [2, 1, 3])
-handle_pics = _extract_row_images(_ws_handle, "handle", 1, [2, 3])
+handle_pics = (
+    _extract_row_images(_ws_handle, "handle", 1, [2, 3]) if _ws_handle is not None else {}
+)
 
 raw = {name: _sheet_rows(name) for name in wb.sheetnames}
 
@@ -628,6 +640,20 @@ def _cabinet_door_column_map(ws, header_row: int = 2) -> dict:
     if hw_color_c is None:
         hw_color_c = 17
 
+    # Merged header row often leaves handle thumbnail cols blank; they sit right of "handle Type".
+    if not handle_pic_cols and handle_col is not None:
+        cand = [handle_col + i for i in (1, 2, 3) if handle_col + i <= ws.max_column]
+        images = getattr(ws, "_images", None) or []
+        found = []
+        for c in cand:
+            for img in images:
+                fr = img.anchor._from
+                if fr.col + 1 != c or fr.row + 1 <= header_row:
+                    continue
+                found.append(c)
+                break
+        handle_pic_cols = sorted(set(found)) if found else cand
+
     return {
         "picture_main": 3,
         "picture_side": 4,
@@ -689,6 +715,8 @@ def parse_handle_workflow(cell) -> str:
         return "none"
     if "v shape" in s or "v-shape" in s or "vshape" in s:
         return "vshape"
+    if s.strip() == "handle":
+        return "separate"
     if "separate" in s:
         return "separate"
     if ("fixed" in s or "款式固定" in str(cell)) and "separate" not in s:
@@ -710,7 +738,15 @@ def _tokenize_handle_codes(raw: str) -> list[str]:
         if len(p) < 2:
             continue
         pl = p.lower()
-        if pl in ("separate handle", "routed handle(cnc)", "cnc", "handle"):
+        if pl in (
+            "separate handle",
+            "routed handle(cnc)",
+            "cnc",
+            "handle",
+            "fixed",
+            "pull",
+            "without handle",
+        ):
             continue
         if "(" in p:
             out.extend(_parse_paren_codes(p))
@@ -726,9 +762,15 @@ def _tokenize_handle_codes(raw: str) -> list[str]:
     return uniq
 
 
+_HANDLE_CODE_STOPWORDS = frozenset(
+    {"fixed", "handle", "cnc", "separate", "pull", "none", "without", "shape"}
+)
+
+
 def _extract_row_handle_options(ws, row: int, pic_cols: list[int], frame_id: str) -> list[dict]:
     opts = []
     seen = set()
+    door_key = str(ws.cell(row, 1).value or "").strip()
     for i, col in enumerate(pic_cols):
         basename = f"{frame_id}-handle-opt{i + 1}"
         url = _extract_cabinet_door_image(
@@ -741,18 +783,41 @@ def _extract_row_handle_options(ws, row: int, pic_cols: list[int], frame_id: str
             row_slack=0,
         )
         code = None
-        for dr in (1, 2, 3, 4):
-            v = ws.cell(row + dr, col).value
-            if not v:
-                continue
-            st = str(v).strip()
-            m = re.search(r"\(([A-Za-z0-9][A-Za-z0-9._-]*)\)", st)
-            if m:
-                code = m.group(1)
+        # Codes sit in the same row as the thumbnails (cols 8–10) or in cells below;
+        # do not read column left of the thumbnail (that is "handle Type" on other rows → false "CNC").
+        for dr in range(0, 8):
+            r2 = row + dr
+            if dr > 0:
+                c1 = ws.cell(r2, 1).value
+                sk = str(c1).strip() if c1 else ""
+                if sk and sk != door_key:
+                    break
+            for dc in (0, 1):
+                cc = col + dc
+                if cc < 1:
+                    continue
+                v = ws.cell(r2, cc).value
+                if not v:
+                    continue
+                st = str(v).strip()
+                m = re.search(r"\(([A-Za-z0-9][A-Za-z0-9._-]*)\)", st)
+                if m:
+                    code = m.group(1)
+                    break
+                m2 = re.search(
+                    r"\b([A-Za-z]{1,4}\d{2,6}(?:-\d+)?)\b",
+                    st,
+                )
+                if m2:
+                    code = m2.group(1)
+                    break
+                if re.match(r"^[A-Za-z0-9][A-Za-z0-9._-]{2,}$", st):
+                    code = st
+                    break
+            if code:
                 break
-            if re.match(r"^[A-Za-z0-9][A-Za-z0-9._-]{2,}$", st):
-                code = st
-                break
+        if code and str(code).strip().lower() in _HANDLE_CODE_STOPWORDS:
+            code = None
         if not code:
             code = f"H{i + 1}"
         if code in seen:
@@ -786,7 +851,12 @@ def _infer_fixed_handle_code(wf: str, handle_raw, options: list[dict]) -> str | 
         if options:
             return options[0]["code"]
         toks = _tokenize_handle_codes(str(handle_raw or ""))
-        return toks[0] if toks else None
+        junk = {"fixed", "handle", "pull", "cnc", "separate", "none"}
+        for t in toks:
+            if str(t).strip().lower() in junk:
+                continue
+            return t
+        return "FIXED"
     return None
 
 
@@ -1025,7 +1095,7 @@ for row in raw["leather"][1:]:
 # 4. WOOD VENEER
 # ---------------------------------------------------------------------------
 wood_list = []
-for row in raw["wood veneer"][1:]:
+for row in raw.get("wood veneer", [])[1:]:
     clean = [c for c in row if c is not None]
     if not clean:
         continue
@@ -1214,6 +1284,8 @@ def _reg_handle(code: str, name: str | None, picture: str | None):
     code = str(code).strip()
     if not code:
         return
+    if code.lower() == "fixed":
+        code = "FIXED"
     if code not in handle_registry:
         handle_registry[code] = {
             "code": code,
@@ -1240,7 +1312,14 @@ for f in frames:
             if len(part) < 2:
                 continue
             pl = part.lower()
-            if pl in ("separate handle", "routed handle(cnc)", "cnc"):
+            if pl in (
+                "separate handle",
+                "routed handle(cnc)",
+                "cnc",
+                "handle",
+                "fixed",
+                "pull",
+            ):
                 continue
             if "(" in part:
                 for c in _parse_paren_codes(part):
@@ -1251,24 +1330,8 @@ for f in frames:
 if any(f.get("handleWorkflow") == "cnc" for f in frames):
     _reg_handle("CNC", "铣型拉手 / Routed CNC handle", handle_pics.get("CNC"))
 
-for row in raw["handle"][1:]:
-    code = row[0] if len(row) > 0 else None
-    if not code:
-        continue
-    cs = str(code).strip()
-    name = row[2].replace("\n", " ").strip() if (len(row) > 2 and row[2]) else None
-    color = row[5].replace("\n", " ").strip() if (len(row) > 5 and row[5]) else None
-    pic = handle_pics.get(cs)
-    if cs not in handle_registry:
-        handle_registry[cs] = {
-            "code": cs,
-            "name": name or cs,
-            "surfaceFinishing": row[4].replace("\n", " ").strip() if (len(row) > 4 and row[4]) else None,
-            "allowedColors": ["color swatch colors"] if color == "color swatch colors" else ([color] if color else ["color swatch colors"]),
-            "picture": pic,
-        }
-    elif pic and not handle_registry[cs].get("picture"):
-        handle_registry[cs]["picture"] = pic
+# Handle catalog entries come from Cabinet Door rows (per-frame options + fixed codes).
+# Optional legacy "handle" sheet images still fill handle_pics for matching codes above.
 
 for _code, _row in list(handle_registry.items()):
     if not _row.get("picture"):
@@ -1277,6 +1340,14 @@ for _code, _row in list(handle_registry.items()):
             _row["picture"] = _p
 
 handle_list = sorted(handle_registry.values(), key=lambda x: str(x["code"]))
+
+if "FIXED" in handle_registry:
+    handle_registry["FIXED"]["name"] = "固定款式拉手（位置可选）"
+    handle_list = sorted(handle_registry.values(), key=lambda x: str(x["code"]))
+
+if "CNC" in handle_registry:
+    handle_registry["CNC"]["name"] = "铣型拉手 / Routed CNC handle"
+    handle_list = sorted(handle_registry.values(), key=lambda x: str(x["code"]))
 
 
 # ---------------------------------------------------------------------------
@@ -1305,6 +1376,12 @@ def ts_obj(obj, indent=2):
 
 def ts_array(arr, name, indent=0):
     pad = " " * indent
+    if not arr:
+        empty_types = {
+            "woodVeneerList": "readonly WoodVeneer[]",
+        }
+        if name in empty_types:
+            return f"export const {name} = [] as {empty_types[name]};\n"
     items = []
     for obj in arr:
         items.append(ts_obj(obj, indent + 4))

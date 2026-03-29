@@ -157,8 +157,8 @@ const M = {
       selectHingeHardware: '请选择铰链型号。',
       handleMountFill: '请填写拉手距底高度（需已填门高）。',
       handleMountBottomMinSeparate:
-        '分体拉手：距底高度建议≥200mm（拉手长160mm时，保证上下净距各≥120mm）。',
-      handleMountTopClearance: '拉手上方净距不足120mm，请调低安装高度或增大门高。',
+        '分体拉手：拉手中心距底部须≥120mm（标配距底960mm；拉手长度固定160mm）。',
+      handleMountTopClearance: '拉手中心距顶部须≥120mm，请调整距底高度或增大门高。',
       handleMountBottomMin50: '拉手距底高度须≥50mm。',
       handleMountLength: '请填写拉手长度（≥50mm）或勾选 CNC 通长。',
     },
@@ -327,8 +327,8 @@ const M = {
       selectHingeHardware: 'Select a hinge model.',
       handleMountFill: 'Enter handle height from bottom (door height required).',
       handleMountBottomMinSeparate:
-        'Separate handle: bottom offset should be ≥200mm (160mm bar → ≥120mm clear top & bottom).',
-      handleMountTopClearance: 'Less than 120mm clearance above handle — lower mount or increase door height.',
+        'Separate handle: handle center must be ≥120mm from bottom (default 960mm; pull length fixed 160mm).',
+      handleMountTopClearance: 'Handle center must be ≥120mm from top — adjust height from bottom or increase door height.',
       handleMountBottomMin50: 'Handle height from bottom must be ≥50mm.',
       handleMountLength: 'Enter handle length (≥50mm) or check full-length CNC.',
     },
