@@ -16,6 +16,7 @@ import {
   handleList,
   frameStandardGlassPricingByCode,
   getHardwareByCode,
+  getMatchedHandles,
 } from './data';
 import { msg, readStoredLocale, writeStoredLocale, type UiLocale } from './translations';
 
@@ -110,6 +111,9 @@ export interface QuotationSnapshot {
   hingeHardwareName: string | null;
   hingeQtyLabel: string;
   hingeColor: string | null;
+  handleBottomMm: number | null;
+  handleLengthMm: number | null;
+  handleCncFullLength: boolean;
   generatedSku: string;
   fullConfigSku: string | null;
   priceLines: PriceLine[];
@@ -162,6 +166,13 @@ interface ConfiguratorState {
   /** hardwareList code when multiple hinges (e.g. HG-BLUM vs HG-SEN). */
   selectedHingeHardwareCode: string | null;
 
+  /** Handle center (or datum) height from door bottom, mm — default 960. */
+  handleBottomMm: number | null;
+  /** CNC / custom pull length, mm — default 160; ignored when handleCncFullLength. */
+  handleLengthMm: number | null;
+  /** CNC 通长拉手 */
+  handleCncFullLength: boolean;
+
   configurationConfirmed: boolean;
 
   // --- Cart ---
@@ -184,6 +195,7 @@ interface ConfiguratorActions {
   selectFiller: (code: string | null) => void;
   selectHandle: (code: string | null) => void;
   selectHandleColor: (color: string | null) => void;
+  setHandleMount: (bottomMm: number | null, lengthMm: number | null, cncFull: boolean) => void;
   selectHingeColor: (color: string | null) => void;
   selectHingeHardware: (hardwareCode: string | null) => void;
   reset: () => void;
@@ -257,6 +269,9 @@ const initialState: ConfiguratorState = {
   baseMaterial: null,
   selectedHandleCode: null,
   selectedHandleColor: null,
+  handleBottomMm: 960,
+  handleLengthMm: 160,
+  handleCncFullLength: false,
   selectedHingeColor: null,
   selectedHingeHardwareCode: null,
   configurationConfirmed: false,
@@ -277,6 +292,9 @@ const clearFromFinish: Partial<ConfiguratorState> = {
   baseMaterial: null,
   selectedHandleCode: null,
   selectedHandleColor: null,
+  handleBottomMm: 960,
+  handleLengthMm: 160,
+  handleCncFullLength: false,
   selectedHingeColor: null,
   selectedHingeHardwareCode: null,
   configurationConfirmed: false,
@@ -355,6 +373,14 @@ const FILLER_TYPE_TO_ALLOWED: Record<FillerType, string[]> = {
 // =============================================================================
 
 function isHandleMatchedToFrame(handle: Handle, frame: Frame): boolean {
+  if (frame.handleOptions.length > 0) {
+    return frame.handleOptions.some(
+      (o) => o.code.toLowerCase() === handle.code.toLowerCase(),
+    );
+  }
+  if (frame.handleWorkflow === 'cnc' && frame.handleOptions.length === 0 && handle.code === 'CNC') {
+    return true;
+  }
   if (!frame.matchedHandle) return false;
   const raw = frame.matchedHandle.toLowerCase();
   const tokens = raw.split(/[\n/]/).map((s) => s.trim()).filter(Boolean);
@@ -366,6 +392,22 @@ function isHandleMatchedToFrame(handle: Handle, frame: Frame): boolean {
   return tokens.some(
     (t) => t === hCode || t === hName || hCode.includes(t) || t.includes(hCode),
   );
+}
+
+function frameSkipsHandleUi(frame: Frame | null): boolean {
+  if (!frame) return true;
+  return frame.handleWorkflow === 'none' || frame.handleWorkflow === 'vshape';
+}
+
+function frameShowsHandleMountPanel(frame: Frame | null): boolean {
+  if (!frame) return false;
+  const w = frame.handleWorkflow;
+  return w === 'separate' || w === 'cnc' || w === 'fixed';
+}
+
+function frameUsesHandleColorStep(frame: Frame | null): boolean {
+  if (!frame) return false;
+  return !frameSkipsHandleUi(frame);
 }
 
 // =============================================================================
@@ -680,11 +722,22 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
         const { disabled } = checkFrameFitsSize(frame, state.width, state.height);
         if (disabled) return;
 
-        // Auto-select the first matching handle
         let autoHandleCode: string | null = null;
-        if (frame.matchedHandle) {
-          const matched = handleList.filter((h) => isHandleMatchedToFrame(h, frame));
-          if (matched.length > 0) autoHandleCode = matched[0].code;
+        const wf = frame.handleWorkflow;
+        if (wf === 'none') {
+          autoHandleCode = null;
+        } else if (wf === 'vshape' || wf === 'fixed') {
+          autoHandleCode = frame.fixedHandleCode ?? null;
+        } else if (wf === 'cnc' && frame.handleOptions.length === 0) {
+          autoHandleCode = 'CNC';
+        } else {
+          const mh = getMatchedHandles(frame);
+          if (mh.length > 0) {
+            autoHandleCode = mh[0].code;
+          } else if (frame.matchedHandle) {
+            const matched = handleList.filter((h) => isHandleMatchedToFrame(h, frame));
+            if (matched.length > 0) autoHandleCode = matched[0].code;
+          }
         }
 
         // Auto-select the first hinge color
@@ -703,6 +756,9 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
             selectedFrameCode: code,
             ...clearFromFinish,
             selectedHandleCode: autoHandleCode,
+            handleBottomMm: 960,
+            handleLengthMm: 160,
+            handleCncFullLength: false,
             selectedHingeColor: autoHingeColor,
             selectedHingeHardwareCode: autoHingeHw,
             configurationConfirmed: false,
@@ -857,6 +913,19 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
       // =====================================================================
       selectHandleColor: (color) => {
         set({ selectedHandleColor: color, configurationConfirmed: false }, undefined, 'selectHandleColor');
+      },
+
+      setHandleMount: (bottomMm, lengthMm, cncFull) => {
+        set(
+          {
+            handleBottomMm: bottomMm,
+            handleLengthMm: lengthMm,
+            handleCncFullLength: cncFull,
+            configurationConfirmed: false,
+          },
+          undefined,
+          'setHandleMount',
+        );
       },
 
       // =====================================================================
@@ -1110,7 +1179,12 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
 
         return handleList.map((handle) => {
           if (!frame) return { handle, disabled: true };
-          if (!frame.matchedHandle) return { handle, disabled: true };
+          if (frameSkipsHandleUi(frame) || frame.handleWorkflow === 'fixed') {
+            return { handle, disabled: true };
+          }
+          if (frame.handleWorkflow === 'cnc' && frame.handleOptions.length === 0) {
+            return { handle, disabled: handle.code !== 'CNC' };
+          }
           const matched = isHandleMatchedToFrame(handle, frame);
           return { handle, disabled: !matched };
         });
@@ -1328,13 +1402,47 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
         if (!s.selectedFillerCode) errors.push(V.selectFiller);
 
         const frame = findFrame(s.selectedFrameCode);
-        if (frame?.matchedHandle) {
-          const matchingHandles = handleList.filter((h) => isHandleMatchedToFrame(h, frame));
-          if (matchingHandles.length > 0 && !s.selectedHandleCode) {
+        if (frame && frameUsesHandleColorStep(frame)) {
+          const choices = getMatchedHandles(frame);
+          const mustPickFromGrid =
+            frame.handleWorkflow === 'separate' ||
+            frame.handleWorkflow === 'legacy_catalog' ||
+            (frame.handleWorkflow === 'cnc' && frame.handleOptions.length > 1);
+          if (mustPickFromGrid && choices.length > 0 && !s.selectedHandleCode) {
             errors.push(V.selectHandle);
           }
-          if (matchingHandles.length > 0 && s.selectedHandleCode && !s.selectedHandleColor) {
-            errors.push(V.selectHandleColor);
+          if (
+            (frame.handleWorkflow === 'cnc' && frame.handleOptions.length === 0) ||
+            frame.handleWorkflow === 'fixed'
+          ) {
+            if (!s.selectedHandleCode) errors.push(V.selectHandle);
+          }
+          if (s.selectedHandleCode) {
+            const h = handleList.find((x) => x.code === s.selectedHandleCode);
+            const allowed = h ? effectiveHandleAllowedColorSet(h, frame) : new Set<string>();
+            if (allowed.size > 0 && !s.selectedHandleColor) {
+              errors.push(V.selectHandleColor);
+            }
+          }
+        }
+
+        if (frame && frameShowsHandleMountPanel(frame)) {
+          const h = s.height;
+          const b = s.handleBottomMm;
+          if (h == null || b == null) {
+            errors.push(V.handleMountFill);
+          } else {
+            if (frame.handleWorkflow === 'separate') {
+              const half = 80;
+              if (b < 200) errors.push(V.handleMountBottomMinSeparate);
+              if (b + half > h - 120) errors.push(V.handleMountTopClearance);
+            } else {
+              if (b < 50) errors.push(V.handleMountBottomMin50);
+            }
+            if (frame.handleWorkflow === 'cnc' && !s.handleCncFullLength) {
+              const len = s.handleLengthMm;
+              if (len == null || len < 50) errors.push(V.handleMountLength);
+            }
           }
         }
 
@@ -1376,14 +1484,21 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
         const finishSeg = finishProcessSkuSegment(finishParsed);
 
         let handleSeg = 'NOHNDL';
-        if (frame.matchedHandle) {
+        const wf = frame.handleWorkflow;
+        if (wf === 'none') {
+          handleSeg = 'NOHNDL';
+        } else if (wf === 'vshape') {
+          handleSeg = skuSanitize(frame.fixedHandleCode ?? 'VSHAPE');
+        } else if (selectedHandleCode && s.selectedHandleColor) {
+          handleSeg = `${skuSanitize(selectedHandleCode)}${skuSanitize(s.selectedHandleColor)}`;
+        } else if (wf === 'legacy_catalog' && frame.matchedHandle) {
           const matchedHandles = handleList.filter((h) => isHandleMatchedToFrame(h, frame));
           if (matchedHandles.length > 0) {
-            if (!selectedHandleCode || !s.selectedHandleColor) return null;
-            handleSeg = `${skuSanitize(selectedHandleCode)}${skuSanitize(s.selectedHandleColor)}`;
-          } else {
-            handleSeg = skuSanitize(frame.matchedHandle);
+            return null;
           }
+          handleSeg = skuSanitize(frame.matchedHandle);
+        } else {
+          return null;
         }
 
         const hingeCalc = get().getHingeCalculation();
@@ -1421,13 +1536,20 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
             : '000';
         const filler = s.selectedFillerCode ?? '000';
         let handle = '000';
-        if (s.selectedHandleCode) {
+        const wf = fr?.handleWorkflow;
+        if (wf === 'none') {
+          handle = '000';
+        } else if (wf === 'vshape') {
+          handle = skuSanitize(fr?.fixedHandleCode ?? 'VSHAPE');
+        } else if (s.selectedHandleCode) {
           handle = skuSanitize(s.selectedHandleCode);
           if (s.selectedHandleColor) {
             handle = `${handle}-${skuSanitize(s.selectedHandleColor)}`;
           }
         } else if (fr?.matchedHandle) {
           handle = skuSanitize(fr.matchedHandle);
+        } else if (fr?.fixedHandleCode) {
+          handle = skuSanitize(fr.fixedHandleCode);
         }
         const hingeCalc = get().getHingeCalculation();
         let hinge = '000';
@@ -1452,7 +1574,7 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
       getHandleColorOptions: (): HandleColorOption[] => {
         const frame = findFrame(get().selectedFrameCode);
         const handle = handleList.find((h) => h.code === get().selectedHandleCode);
-        if (!frame?.matchedHandle || !handle) return [];
+        if (!frame || !handle || !frameUsesHandleColorStep(frame)) return [];
         return handleColorOptionRows(handle, frame);
       },
 
@@ -1511,9 +1633,17 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
           finishCategory: fin?.category ?? s.selectedFinishCategory,
           fillerCode: s.selectedFillerCode,
           fillerName: filler?.name ?? null,
-          handleCode: s.selectedHandleCode ?? (frame?.matchedHandle ?? null),
-          handleName: handle?.name ?? frame?.matchedHandle ?? null,
+          handleCode:
+            s.selectedHandleCode ??
+            frame?.fixedHandleCode ??
+            frame?.matchedHandle ??
+            null,
+          handleName:
+            handle?.name ?? frame?.fixedHandleCode ?? frame?.matchedHandle ?? null,
           handleColor: s.selectedHandleColor,
+          handleBottomMm: s.handleBottomMm,
+          handleLengthMm: s.handleLengthMm,
+          handleCncFullLength: s.handleCncFullLength,
           hingeHardwareCode: hw0?.code != null ? String(hw0.code) : null,
           hingeHardwareName: hw0?.name ?? frame?.matchedHardware ?? null,
           hingeQtyLabel,

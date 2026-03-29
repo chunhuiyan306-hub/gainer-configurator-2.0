@@ -555,13 +555,250 @@ def to_ts_val(v):
 
 
 # ---------------------------------------------------------------------------
+# Cabinet Door — header row (row 2) column map (supports inserted handle picture cols)
+# ---------------------------------------------------------------------------
+
+def _cab_header_texts(ws, header_row: int = 2) -> dict[int, str]:
+    out = {}
+    for c in range(1, ws.max_column + 1):
+        v = ws.cell(header_row, c).value
+        out[c] = str(v).strip().lower().replace("\n", " ") if v else ""
+    return out
+
+
+def _cab_first_col(texts: dict[int, str], pred) -> int | None:
+    for c in sorted(texts.keys()):
+        t = texts[c]
+        if t and pred(t):
+            return c
+    return None
+
+
+def _cabinet_door_column_map(ws, header_row: int = 2) -> dict:
+    tmap = _cab_header_texts(ws, header_row)
+
+    handle_pic_cols = []
+    for c in sorted(tmap.keys()):
+        s = tmap[c]
+        if not s or "hinge" in s:
+            continue
+        if "handle" in s and "picture" in s:
+            handle_pic_cols.append(c)
+    handle_pic_cols = sorted(set(handle_pic_cols))
+
+    handle_col = None
+    scored = []
+    for c in sorted(tmap.keys()):
+        s = tmap[c]
+        if not s or "hinge" in s:
+            continue
+        if "picture" in s and "handle" in s:
+            continue
+        if "diagram" in s or ("position" in s and "handle" in s):
+            continue
+        if "handle" not in s:
+            continue
+        score = 0
+        if "type" in s:
+            score += 3
+        if s.strip() == "handle":
+            score += 2
+        scored.append((-score, c))
+    scored.sort()
+    if scored:
+        handle_col = scored[0][1]
+    else:
+        handle_col = 7
+
+    diagram_col = _cab_first_col(
+        tmap, lambda s: "diagram" in s or ("position" in s and "handle" in s)
+    )
+
+    def col_or(*words, default: int) -> int:
+        hit = _cab_first_col(tmap, lambda s: all(w in s for w in words))
+        return hit if hit is not None else default
+
+    hinge_code_c = col_or("hinge", "code", default=16)
+    hw_color_c = None
+    for c in range(hinge_code_c + 1, min(hinge_code_c + 6, ws.max_column + 1)):
+        s = (tmap.get(c, "") or "").strip()
+        if s == "color":
+            hw_color_c = c
+            break
+    if hw_color_c is None:
+        hw_color_c = 17
+
+    return {
+        "picture_main": 3,
+        "picture_side": 4,
+        "picture_profile": 5,
+        "thinkness": 6,
+        "handle": handle_col,
+        "handle_pic_cols": handle_pic_cols,
+        "diagram": diagram_col,
+        "surface": col_or("surface", "finish", default=8),
+        "door_type": col_or("door", "type", default=9),
+        "std_filler": _cab_first_col(
+            tmap,
+            lambda s: "filler" in s and "standard" in s and "optional" not in s,
+        )
+        or 10,
+        "price": _cab_first_col(tmap, lambda s: s == "price") or 11,
+        "filler_opt": _cab_first_col(
+            tmap, lambda s: "filler" in s and "optional" in s
+        )
+        or 12,
+        "price_m2": _cab_first_col(tmap, lambda s: "price/m" in s or "m²" in s or "m2" in s)
+        or 13,
+        "filler_thickness": _cab_first_col(
+            tmap,
+            lambda s: "thickness" in s and "filler" in s,
+        )
+        or 14,
+        "hardware": _cab_first_col(
+            tmap, lambda s: "other hardware" in s or s == "other hardware"
+        )
+        or 15,
+        "hinge_code": hinge_code_c,
+        "hw_color": hw_color_c,
+        "hinge_picture": _cab_first_col(
+            tmap, lambda s: "hinge" in s and "picture" in s
+        )
+        or 18,
+        "notes": _cab_first_col(tmap, lambda s: "note" in s) or 19,
+    }
+
+
+def _fix_thinkness_col(tmap: dict[int, str], default: int = 6) -> int:
+    c = _cab_first_col(tmap, lambda s: "thinkness" in s)
+    if c is not None:
+        return c
+    c2 = _cab_first_col(tmap, lambda s: "thickness" in s and "filler" not in s)
+    return c2 if c2 is not None else default
+
+
+def parse_handle_workflow(cell) -> str:
+    if not cell or str(cell).strip() in ("", "\\", "None"):
+        return "none"
+    s = str(cell).strip().lower()
+    if "without" in s and "handle" in s:
+        return "none"
+    if "no handle" in s:
+        return "none"
+    if "无拉手" in str(cell):
+        return "none"
+    if "v shape" in s or "v-shape" in s or "vshape" in s:
+        return "vshape"
+    if "separate" in s:
+        return "separate"
+    if ("fixed" in s or "款式固定" in str(cell)) and "separate" not in s:
+        return "fixed"
+    if "cnc" in s or "routed" in s or "铣" in str(cell):
+        return "cnc"
+    return "legacy_catalog"
+
+
+def _parse_paren_codes(text: str) -> list[str]:
+    return re.findall(r"\(([A-Za-z0-9][A-Za-z0-9._-]*)\)", str(text))
+
+
+def _tokenize_handle_codes(raw: str) -> list[str]:
+    parts = re.split(r"[/\n,，]+", str(raw))
+    out = []
+    for p in parts:
+        p = p.strip()
+        if len(p) < 2:
+            continue
+        pl = p.lower()
+        if pl in ("separate handle", "routed handle(cnc)", "cnc", "handle"):
+            continue
+        if "(" in p:
+            out.extend(_parse_paren_codes(p))
+        elif re.match(r"^[A-Za-z0-9][A-Za-z0-9._-]{1,}$", p):
+            out.append(p)
+    seen = set()
+    uniq = []
+    for x in out:
+        k = x.upper()
+        if k not in seen:
+            seen.add(k)
+            uniq.append(x)
+    return uniq
+
+
+def _extract_row_handle_options(ws, row: int, pic_cols: list[int], frame_id: str) -> list[dict]:
+    opts = []
+    seen = set()
+    for i, col in enumerate(pic_cols):
+        basename = f"{frame_id}-handle-opt{i + 1}"
+        url = _extract_cabinet_door_image(
+            ws,
+            row,
+            col,
+            "cabinet-door",
+            basename,
+            prefer_cols=[col, col + 1, col - 1],
+            row_slack=0,
+        )
+        code = None
+        for dr in (1, 2, 3, 4):
+            v = ws.cell(row + dr, col).value
+            if not v:
+                continue
+            st = str(v).strip()
+            m = re.search(r"\(([A-Za-z0-9][A-Za-z0-9._-]*)\)", st)
+            if m:
+                code = m.group(1)
+                break
+            if re.match(r"^[A-Za-z0-9][A-Za-z0-9._-]{2,}$", st):
+                code = st
+                break
+        if not code:
+            code = f"H{i + 1}"
+        if code in seen:
+            code = f"{code}-{i + 1}"
+        seen.add(code)
+        if url or code != f"H{i + 1}":
+            opts.append({"code": code, "name": code, "picture": url})
+    return opts
+
+
+def _options_from_text_and_pics(raw: str, pics: dict) -> list[dict]:
+    opts = []
+    for code in _tokenize_handle_codes(raw):
+        opts.append(
+            {
+                "code": code,
+                "name": code,
+                "picture": pics.get(code) or pics.get(str(code).strip()),
+            }
+        )
+    return opts
+
+
+def _infer_fixed_handle_code(wf: str, handle_raw, options: list[dict]) -> str | None:
+    if wf == "vshape":
+        if options:
+            return options[0]["code"]
+        toks = _tokenize_handle_codes(str(handle_raw or ""))
+        return toks[0] if toks else None
+    if wf == "fixed":
+        if options:
+            return options[0]["code"]
+        toks = _tokenize_handle_codes(str(handle_raw or ""))
+        return toks[0] if toks else None
+    return None
+
+
+# ---------------------------------------------------------------------------
 # 1. FRAMES — sheet "Cabinet Door": row 2 = header, row 3+ = data;
 #    section divider cell "Interior DooR" starts 房门 (room) category.
-#    Columns (1-based): A code, B material, C–E door photos, F profile/Cover|Insert,
-#    G handle, H surface, I door type, J std filler, K price, … N filler thickness,
-#    O hardware name, P hinge code, Q hardware color, R (hinge img), S notes.
 # ---------------------------------------------------------------------------
 ws_cab = _ws_cab
+_cab_hdr = _cab_header_texts(ws_cab, 2)
+_cab_cols = _cabinet_door_column_map(ws_cab, 2)
+_cab_cols["thinkness"] = _fix_thinkness_col(_cab_hdr, 6)
+
 frames = []
 frame_standard_glass_prices = {}
 
@@ -577,52 +814,80 @@ for r in range(3, ws_cab.max_row + 1):
         category = "room"
         continue
 
-    door_type_raw = ws_cab.cell(r, 9).value
+    cc = _cab_cols
+    door_type_raw = ws_cab.cell(r, cc["door_type"]).value
     if not door_type_raw or str(door_type_raw).strip() in ("", "\\"):
         continue
 
     code = str(code_cell).strip()
     frame_id = f"{category}-{code}"
 
-    # C, D, E = main / side / profile; R = hinge. Main allows ±1 row for 房门 paste offset; others stay same-row.
     picture_main = _extract_cabinet_door_image(
         ws_cab,
         r,
-        3,
+        cc["picture_main"],
         "cabinet-door",
         f"{frame_id}-main",
         prefer_cols=[3, 4, 5, 2, 6],
         row_slack=1,
     )
     picture_side = _extract_cabinet_door_image(
-        ws_cab, r, 4, "cabinet-door", f"{frame_id}-side", prefer_cols=[4, 3, 5]
+        ws_cab,
+        r,
+        cc["picture_side"],
+        "cabinet-door",
+        f"{frame_id}-side",
+        prefer_cols=[4, 3, 5],
     )
     picture_profile = _extract_cabinet_door_image(
-        ws_cab, r, 5, "cabinet-door", f"{frame_id}-profile", prefer_cols=[5, 4, 3]
+        ws_cab,
+        r,
+        cc["picture_profile"],
+        "cabinet-door",
+        f"{frame_id}-profile",
+        prefer_cols=[5, 4, 3],
     )
     hinge_picture = _extract_cabinet_door_image(
-        ws_cab, r, 18, "cabinet-door", f"{frame_id}-hinge", prefer_cols=[18, 17, 16]
+        ws_cab,
+        r,
+        cc["hinge_picture"],
+        "cabinet-door",
+        f"{frame_id}-hinge",
+        prefer_cols=[cc["hinge_picture"], cc["hinge_picture"] - 1, cc["hw_color"]],
     )
-    # List thumbnail: column C; if empty, fall back so the card is not blank
     picture = picture_main or picture_side or picture_profile
     pics = [u for u in (picture_main, picture_side, picture_profile) if u]
 
-    think_raw = ws_cab.cell(r, 6).value
+    think_raw = ws_cab.cell(r, cc["thinkness"]).value
     frame_profile_label, mounting_type = parse_frame_profile_mounting(think_raw)
 
-    handle_raw = ws_cab.cell(r, 7).value
-    surface_raw = ws_cab.cell(r, 8).value
-    std_filler_raw = ws_cab.cell(r, 10).value
-    price_raw = ws_cab.cell(r, 11).value
-    thickness_raw = ws_cab.cell(r, 14).value
-    hardware_raw = ws_cab.cell(r, 15).value
-    hinge_code_raw = ws_cab.cell(r, 16).value
-    hw_color_raw = ws_cab.cell(r, 17).value
-    notes = ws_cab.cell(r, 19).value
+    handle_raw = ws_cab.cell(r, cc["handle"]).value
+    surface_raw = ws_cab.cell(r, cc["surface"]).value
+    std_filler_raw = ws_cab.cell(r, cc["std_filler"]).value
+    price_raw = ws_cab.cell(r, cc["price"]).value
+    thickness_raw = ws_cab.cell(r, cc["filler_thickness"]).value
+    hardware_raw = ws_cab.cell(r, cc["hardware"]).value
+    hinge_code_raw = ws_cab.cell(r, cc["hinge_code"]).value
+    hw_color_raw = ws_cab.cell(r, cc["hw_color"]).value
+    notes = ws_cab.cell(r, cc["notes"]).value
+
+    handle_diagram_picture = None
+    if cc.get("diagram"):
+        handle_diagram_picture = _extract_cabinet_door_image(
+            ws_cab,
+            r,
+            cc["diagram"],
+            "cabinet-door",
+            f"{frame_id}-handle-diagram",
+            prefer_cols=[cc["diagram"], cc["diagram"] + 1, cc["diagram"] - 1],
+            row_slack=0,
+        )
+    if not handle_diagram_picture:
+        handle_diagram_picture = picture_main
 
     door_type = classify_door_type(door_type_raw)
     allowed_fillers = infer_allowed_fillers(door_type_raw, std_filler_raw)
-    filler_thickness = parse_thickness(thickness_raw) if thickness_raw else []
+    filler_thickness = parse_thickness(str(thickness_raw)) if thickness_raw else []
     size_limits = parse_size_limits(notes)
     door_thickness = parse_door_thickness(notes)
     allowed_finishing = parse_allowed_finishing(surface_raw, None)
@@ -633,7 +898,25 @@ for r in range(3, ws_cab.max_row + 1):
     if std_filler_raw and str(std_filler_raw).strip() not in ("\\", "color swatch colors"):
         std_fillers = [s.strip() for s in str(std_filler_raw).replace("\n", "/").split("/") if s.strip()]
 
-    matched_handle = str(handle_raw).replace("\n", " ").strip() if handle_raw else None
+    handle_workflow = parse_handle_workflow(handle_raw)
+    handle_options = _extract_row_handle_options(
+        ws_cab, r, cc["handle_pic_cols"], frame_id
+    )
+
+    if handle_workflow == "separate" and not handle_options and handle_raw:
+        handle_options = _options_from_text_and_pics(str(handle_raw), handle_pics)
+
+    fixed_handle_code = _infer_fixed_handle_code(
+        handle_workflow, handle_raw, handle_options
+    )
+
+    matched_handle = None
+    if handle_workflow == "legacy_catalog" and handle_raw:
+        matched_handle = str(handle_raw).replace("\n", " ").strip()
+    elif handle_workflow == "separate" and not handle_options and handle_raw:
+        matched_handle = str(handle_raw).replace("\n", " ").strip()
+        handle_workflow = "legacy_catalog"
+
     matched_hardware = str(hardware_raw).replace("\n", " ").strip() if hardware_raw else None
     hw_colors = parse_hardware_colors(hw_color_raw)
     hinge_codes = [
@@ -658,6 +941,10 @@ for r in range(3, ws_cab.max_row + 1):
         "doorThickness": door_thickness,
         "frameProfileLabel": frame_profile_label,
         "mountingType": mounting_type,
+        "handleWorkflow": handle_workflow,
+        "handleOptions": handle_options,
+        "fixedHandleCode": fixed_handle_code,
+        "handleDiagramPicture": handle_diagram_picture,
         "matchedHandle": matched_handle,
         "matchedHardware": matched_hardware,
         "hingeCodes": hinge_codes,
@@ -916,28 +1203,80 @@ if "jm47012" not in _hw_codes_norm:  # JM470-1-2
     })
 
 # ---------------------------------------------------------------------------
-# 8. HANDLES
+# 8. HANDLES — union of Cabinet Door handleOptions + codes on frames + handle sheet pics
 # ---------------------------------------------------------------------------
-handle_list = []
+handle_registry = {}
+
+
+def _reg_handle(code: str, name: str | None, picture: str | None):
+    if not code:
+        return
+    code = str(code).strip()
+    if not code:
+        return
+    if code not in handle_registry:
+        handle_registry[code] = {
+            "code": code,
+            "name": (name or code).replace("\n", " ").strip(),
+            "surfaceFinishing": None,
+            "allowedColors": ["color swatch colors"],
+            "picture": picture,
+        }
+    else:
+        if picture and not handle_registry[code].get("picture"):
+            handle_registry[code]["picture"] = picture
+
+
+for f in frames:
+    for opt in f.get("handleOptions") or []:
+        _reg_handle(opt["code"], opt.get("name"), opt.get("picture"))
+    if f.get("fixedHandleCode"):
+        fc = f["fixedHandleCode"]
+        _reg_handle(fc, fc, handle_pics.get(fc))
+    if f.get("handleWorkflow") == "legacy_catalog" and f.get("matchedHandle"):
+        mh_raw = f["matchedHandle"]
+        for part in re.split(r"[/\n,，]+", mh_raw):
+            part = part.strip()
+            if len(part) < 2:
+                continue
+            pl = part.lower()
+            if pl in ("separate handle", "routed handle(cnc)", "cnc"):
+                continue
+            if "(" in part:
+                for c in _parse_paren_codes(part):
+                    _reg_handle(c, c, handle_pics.get(c))
+            elif re.match(r"^[A-Za-z0-9][A-Za-z0-9._-]{1,}$", part):
+                _reg_handle(part, part, handle_pics.get(part))
+
+if any(f.get("handleWorkflow") == "cnc" for f in frames):
+    _reg_handle("CNC", "铣型拉手 / Routed CNC handle", handle_pics.get("CNC"))
+
 for row in raw["handle"][1:]:
-    clean = [c for c in row if c is not None]
-    if not clean:
-        continue
-    code = row[0]
+    code = row[0] if len(row) > 0 else None
     if not code:
         continue
-    # Header: code(0) | picture(1) | name(2) | ?(3) | surface finishing(4) | color(5)
+    cs = str(code).strip()
     name = row[2].replace("\n", " ").strip() if (len(row) > 2 and row[2]) else None
-    surface = row[4].replace("\n", " ").strip() if (len(row) > 4 and row[4]) else None
     color = row[5].replace("\n", " ").strip() if (len(row) > 5 and row[5]) else None
+    pic = handle_pics.get(cs)
+    if cs not in handle_registry:
+        handle_registry[cs] = {
+            "code": cs,
+            "name": name or cs,
+            "surfaceFinishing": row[4].replace("\n", " ").strip() if (len(row) > 4 and row[4]) else None,
+            "allowedColors": ["color swatch colors"] if color == "color swatch colors" else ([color] if color else ["color swatch colors"]),
+            "picture": pic,
+        }
+    elif pic and not handle_registry[cs].get("picture"):
+        handle_registry[cs]["picture"] = pic
 
-    handle_list.append({
-        "code": code,
-        "name": name or code,
-        "surfaceFinishing": surface,
-        "allowedColors": ["color swatch colors"] if color == "color swatch colors" else ([color] if color else []),
-        "picture": handle_pics.get(str(code).strip()),
-    })
+for _code, _row in list(handle_registry.items()):
+    if not _row.get("picture"):
+        _p = handle_pics.get(_code)
+        if _p:
+            _row["picture"] = _p
+
+handle_list = sorted(handle_registry.values(), key=lambda x: str(x["code"]))
 
 
 # ---------------------------------------------------------------------------
@@ -1005,6 +1344,20 @@ export interface SizeLimits {
 export type FrameCategory = 'cabinet' | 'room';
 export type FrameMountingType = 'insert' | 'cover';
 
+export type HandleWorkflow =
+  | 'none'
+  | 'vshape'
+  | 'fixed'
+  | 'separate'
+  | 'cnc'
+  | 'legacy_catalog';
+
+export interface FrameHandleOption {
+  readonly code: string;
+  readonly name: string;
+  readonly picture: string | null;
+}
+
 export interface Frame {
   id: string;
   code: string;
@@ -1021,6 +1374,15 @@ export interface Frame {
   frameProfileLabel: string | null;
   /** Parsed from profile cell: 卡槽 insert / 贴面 cover. */
   mountingType: FrameMountingType | null;
+  /** Pull / CNC / none / V-shape / fixed / legacy text match. */
+  handleWorkflow: HandleWorkflow;
+  /** Per-row handle SKUs from Excel handle-picture columns (Separate handle). */
+  handleOptions: readonly FrameHandleOption[];
+  /** Preset code for V-shape / fixed (no tile pick). */
+  fixedHandleCode: string | null;
+  /** Door diagram for handle position UI; falls back to main photo. */
+  handleDiagramPicture: string | null;
+  /** Legacy: raw Excel handle cell for catalog matching. */
   matchedHandle: string | null;
   matchedHardware: string | null;
   /** Hinge product codes from Excel (e.g. AIRHINGE / HG-BLUM), matched to hardwareList. */
@@ -1287,21 +1649,39 @@ export function getAvailableFillers(frame: Frame) {
   return result;
 }
 
-export function getMatchedHandle(frame: Frame): Handle | null {
-  if (!frame.matchedHandle) return null;
-  const handleName = frame.matchedHandle.toLowerCase();
-  return (handleList.find(
-    (h) => h.code.toLowerCase() === handleName || h.name.toLowerCase() === handleName
-  ) ?? null) as Handle | null;
-}
-
 export function getMatchedHandles(frame: Frame): Handle[] {
+  if (frame.handleOptions.length > 0) {
+    return frame.handleOptions.map((o) => ({
+      code: o.code,
+      name: o.name,
+      surfaceFinishing: null,
+      allowedColors: ['color swatch colors'],
+      picture: o.picture,
+    })) as Handle[];
+  }
   if (!frame.matchedHandle) return [];
   const raw = frame.matchedHandle;
   const codes = raw.split(/[\\n\\/]/).map((s) => s.trim().toLowerCase()).filter(Boolean);
   return handleList.filter(
     (h) => codes.some((c) => h.code.toLowerCase() === c || h.name.toLowerCase().includes(c))
   );
+}
+
+export function getMatchedHandle(frame: Frame): Handle | null {
+  const list = getMatchedHandles(frame);
+  if (list.length > 0) return list[0];
+  if (frame.fixedHandleCode) {
+    const hit = handleList.find((h) => h.code === frame.fixedHandleCode);
+    if (hit) return hit;
+    return {
+      code: frame.fixedHandleCode,
+      name: frame.fixedHandleCode,
+      surfaceFinishing: null,
+      allowedColors: ['color swatch colors'],
+      picture: null,
+    } as Handle;
+  }
+  return null;
 }
 
 export function calculateHingeQty(heightMm: number): { qty: number; usePivot: boolean } {

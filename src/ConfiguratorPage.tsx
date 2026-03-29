@@ -1,5 +1,7 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
+import type { Frame } from './data';
 import { useConfiguratorStore, type FinishCategory, type FrameOption } from './useConfiguratorStore';
+import { HandleMountPanel } from './components/HandleMountPanel';
 import { StepSection } from './components/StepSection';
 import { SelectableTile } from './components/SelectableTile';
 import { MediaThumb } from './components/MediaThumb';
@@ -28,6 +30,16 @@ function fillerLabel(f: { name: string; code: string }) {
   return `${f.code} · ${f.name}`;
 }
 
+function handleStepSubtitle(frame: Frame | null, t: UiMessages): string {
+  if (!frame) return t.stepHandleSubtitleNone;
+  const w = frame.handleWorkflow;
+  if (w === 'none' || w === 'vshape') return t.stepHandleSubtitleNone;
+  if (w === 'separate') return t.stepHandleSubtitleSeparate;
+  if (w === 'cnc') return t.stepHandleSubtitleCnc;
+  if (w === 'fixed') return t.stepHandleSubtitleFixed;
+  return frame.matchedHandle ? t.stepHandleSubtitleMatch(frame.matchedHandle) : t.stepHandleSubtitleNone;
+}
+
 export function ConfiguratorPage() {
   const uiLocale = useConfiguratorStore((s) => s.uiLocale);
   const setUiLocale = useConfiguratorStore((s) => s.setUiLocale);
@@ -45,6 +57,9 @@ export function ConfiguratorPage() {
   const baseMaterial = useConfiguratorStore((s) => s.baseMaterial);
   const selectedHandleCode = useConfiguratorStore((s) => s.selectedHandleCode);
   const selectedHandleColor = useConfiguratorStore((s) => s.selectedHandleColor);
+  const handleBottomMm = useConfiguratorStore((s) => s.handleBottomMm);
+  const handleLengthMm = useConfiguratorStore((s) => s.handleLengthMm);
+  const handleCncFullLength = useConfiguratorStore((s) => s.handleCncFullLength);
   const selectedHingeColor = useConfiguratorStore((s) => s.selectedHingeColor);
   const selectedHingeHardwareCode = useConfiguratorStore((s) => s.selectedHingeHardwareCode);
   const configurationConfirmed = useConfiguratorStore((s) => s.configurationConfirmed);
@@ -58,6 +73,7 @@ export function ConfiguratorPage() {
   const selectFiller = useConfiguratorStore((s) => s.selectFiller);
   const selectHandle = useConfiguratorStore((s) => s.selectHandle);
   const selectHandleColor = useConfiguratorStore((s) => s.selectHandleColor);
+  const setHandleMount = useConfiguratorStore((s) => s.setHandleMount);
   const selectHingeColor = useConfiguratorStore((s) => s.selectHingeColor);
   const selectHingeHardware = useConfiguratorStore((s) => s.selectHingeHardware);
   const resetConfiguration = useConfiguratorStore((s) => s.resetConfiguration);
@@ -89,6 +105,29 @@ export function ConfiguratorPage() {
 
   const cabinetFrameOpts = frameOptions.filter((o) => o.frame.frameCategory === 'cabinet');
   const roomFrameOpts = frameOptions.filter((o) => o.frame.frameCategory === 'room');
+
+  const enabledHandleOpts = handleOptions.filter((o) => !o.disabled);
+  const showHandleTileGrid =
+    frame &&
+    frame.handleWorkflow !== 'none' &&
+    frame.handleWorkflow !== 'vshape' &&
+    frame.handleWorkflow !== 'fixed' &&
+    !(
+      frame.handleWorkflow === 'cnc' &&
+      frame.handleOptions.length === 0 &&
+      enabledHandleOpts.length <= 1
+    ) &&
+    enabledHandleOpts.length > 0;
+  const showHandleMountPanel =
+    frame &&
+    (frame.handleWorkflow === 'separate' ||
+      frame.handleWorkflow === 'cnc' ||
+      frame.handleWorkflow === 'fixed');
+  const showHandleColorBlock =
+    frame &&
+    frame.handleWorkflow !== 'none' &&
+    frame.handleWorkflow !== 'vshape' &&
+    Boolean(selectedHandleCode);
 
   const gridStyle = {
     display: 'grid',
@@ -444,13 +483,9 @@ export function ConfiguratorPage() {
           step={5}
           stepPrefix={t.stepPrefix}
           title={t.stepHandleTitle}
-          subtitle={
-            frame?.matchedHandle
-              ? t.stepHandleSubtitleMatch(frame.matchedHandle)
-              : t.stepHandleSubtitleNone
-          }
+          subtitle={handleStepSubtitle(frame, t)}
         >
-          {frame?.matchedHandle ? (
+          {showHandleTileGrid ? (
             <div style={gridStyle}>
               {handleOptions.map(({ handle: h, disabled }) => {
                 const selected = selectedHandleCode === h.code;
@@ -480,7 +515,7 @@ export function ConfiguratorPage() {
               })}
             </div>
           ) : null}
-          {frame?.matchedHandle && selectedHandleCode ? (
+          {showHandleColorBlock ? (
             <>
               <p
                 style={{
@@ -513,7 +548,17 @@ export function ConfiguratorPage() {
               </div>
             </>
           ) : null}
-          {!frame?.matchedHandle ? (
+          {showHandleMountPanel && frame ? (
+            <HandleMountPanel
+              frame={frame}
+              bottomMm={handleBottomMm}
+              lengthMm={handleLengthMm}
+              cncFull={handleCncFullLength}
+              onChange={setHandleMount}
+              t={t}
+            />
+          ) : null}
+          {frame?.handleWorkflow === 'none' || frame?.handleWorkflow === 'vshape' ? (
             <p style={{ color: 'var(--text-secondary)', fontSize: 15 }}>{t.stepHandleSkip}</p>
           ) : null}
         </StepSection>
