@@ -81,7 +81,8 @@ const M = {
     hingeSchematicTitle: '铰链与拉手开孔示意（比例示意，非加工图）',
     hingeSegmentD: (i: number) => `D${i + 1}`,
     hingeHoleFromBottom: (i: number) => `铰链 ${i + 1} 距门底 (mm)`,
-    hingeFixedAirNote: '天地铰链：上下端各 1 孔，位置固定不可调。',
+    hingeFixedAirNote:
+      '天地铰链：上下各 1 孔，位于铝框底端与顶端（相对门扇底边为 0 mm 与门高 H），位置固定不可调。',
     hingePinOptionalThird: '加选中间针式铰链（第 3 孔）',
     hingeFloatHint: '相对标配孔每孔可 ±50 mm；铰链中心距门顶、门底均须 ≥50 mm。',
     totalLabel: '合计',
@@ -144,6 +145,8 @@ const M = {
 
     pivotWarning:
       '门高超过 2500 mm，需采用天地轴（Pivot）铰链，不再使用标准铰链数量规则。',
+    pivotWarningBlumCq:
+      '当前门高超过 2700 mm：百隆杯式 / Sensys / Salice CQ 铰链按规范需改用天地轴（Pivot）方案，不再使用多铰链分档规则。',
 
     price: {
       empty: '请完成全部选项以查看价格。',
@@ -271,7 +274,8 @@ const M = {
     hingeSchematicTitle: 'Hinge & handle layout (schematic, not for fabrication)',
     hingeSegmentD: (i: number) => `D${i + 1}`,
     hingeHoleFromBottom: (i: number) => `Hinge ${i + 1} from bottom (mm)`,
-    hingeFixedAirNote: 'Air hinge: top and bottom holes only — fixed, not adjustable.',
+    hingeFixedAirNote:
+      'Air hinge: one hole at the bottom and one at the top of the aluminum frame (0 mm and door height H from the bottom edge) — fixed, not adjustable.',
     hingePinOptionalThird: 'Add optional middle pin hinge (3rd hole)',
     hingeFloatHint: '±50 mm vs standard hole each; hinge center must be ≥50 mm from top and bottom.',
     totalLabel: 'Total',
@@ -334,6 +338,8 @@ const M = {
 
     pivotWarning:
       'Door height exceeds 2500 mm — a pivot hinge is required instead of standard hinge counts.',
+    pivotWarningBlumCq:
+      'Door height exceeds 2700 mm — Blum cup / Sensys / Salice CQ layouts switch to a pivot hinge set (no multi-hinge banding per datasheet).',
 
     price: {
       empty: 'Complete all selections to see pricing.',

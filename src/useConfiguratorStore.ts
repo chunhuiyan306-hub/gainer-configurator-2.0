@@ -1569,7 +1569,8 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
 
         let pivotWarning: string | null = null;
         if (layout.usePivot && H != null && H > 0) {
-          pivotWarning = L.pivotWarning;
+          pivotWarning =
+            layout.ruleset === 'blum_cq' ? L.pivotWarningBlumCq : L.pivotWarning;
         }
 
         const airHingeHeightWarning =
@@ -1831,6 +1832,7 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
             Hn,
             hingeCalc.nominalPositionsFromBottomMm,
             hingeCalc.hingeFloatMm,
+            hingeCalc.hingeRuleset,
           );
           if (!pv.ok) errors.push(V.hingePositionOutOfRange);
         }

@@ -1,7 +1,7 @@
 /**
  * Hinge quantity & nominal hole positions (mm from door bottom, hinge axis).
  * Blum cup / Sensys / Salice CQ: bands per supplier drawing; ±50 mm float in UI.
- * Air hinges: 2 holes, top & bottom, fixed.
+ * Air hinges: 2 holes at aluminum frame top & bottom — inset 0 (centers at 0 and H from bottom), fixed.
  * Pin hinges: 89 mm from edges; optional 3rd at mid; ±50 mm float.
  */
 
@@ -55,8 +55,10 @@ export function nominalBlumCqPositions(heightMm: number, count: number): number[
   return nominalEvenBetweenInsets(heightMm, count, BLUM_CQ_EDGE_MM);
 }
 
+/** Bottom hinge at frame bottom (0 from bottom), top hinge at frame top (H from bottom). */
 export function nominalAirPositions(heightMm: number): number[] {
-  return nominalBlumCqPositions(heightMm, 2);
+  if (heightMm <= 0) return [];
+  return [0, heightMm];
 }
 
 export function nominalPinPositions(heightMm: number, thirdHinge: boolean): number[] {
@@ -217,8 +219,16 @@ export function validateHingePositionsMm(
   heightMm: number,
   nominal: number[],
   floatMm: number,
+  ruleset: HingeRuleset = 'legacy',
 ): { ok: boolean; index: number } {
   if (heightMm <= 0) return { ok: true, index: -1 };
+  if (ruleset === 'air') {
+    if (positions.length !== nominal.length) return { ok: false, index: 0 };
+    for (let i = 0; i < positions.length; i++) {
+      if (Math.abs(positions[i]! - nominal[i]!) > 0.5) return { ok: false, index: i };
+    }
+    return { ok: true, index: -1 };
+  }
   for (let i = 0; i < positions.length; i++) {
     const p = positions[i]!;
     if (p < HINGE_MIN_FROM_EDGE_MM || p > heightMm - HINGE_MIN_FROM_EDGE_MM) {
