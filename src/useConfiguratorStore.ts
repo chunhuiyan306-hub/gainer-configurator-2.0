@@ -1644,11 +1644,13 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
           if (h == null || b == null) {
             errors.push(V.handleMountFill);
           } else {
-            if (frame.handleWorkflow === 'separate') {
-              if (b < 120) errors.push(V.handleMountBottomMinSeparate);
-              if (h - b < 120) errors.push(V.handleMountTopClearance);
-            } else {
-              if (b < 50) errors.push(V.handleMountBottomMin50);
+            if (b < 50) {
+              errors.push(V.handleMountBottomMin50);
+            } else if (frame.handleWorkflow === 'separate' && b < 120) {
+              errors.push(V.handleMountBottomMinSeparate);
+            }
+            if (frame.handleWorkflow === 'separate' && h - b < 120) {
+              errors.push(V.handleMountTopClearance);
             }
             if (frame.handleWorkflow === 'cnc' && !s.handleCncFullLength) {
               const len = finiteNullableMm(s.handleLengthMm);

@@ -34,23 +34,26 @@ export function HandleMountPanel({
   const wf = frame.handleWorkflow;
   const pic = frame.handleDiagramPicture;
   const showLen = wf === 'cnc';
-  const minBottomMm = wf === 'separate' ? 120 : 50;
   const bottomVal = finiteMm(bottomMm);
   const heightVal = finiteMm(heightMm);
-  const bottomTooLow = bottomVal != null && bottomVal < minBottomMm;
+  /** Universal floor: any workflow must be ≥50 mm from bottom (UI + confirm). */
+  const below50 = bottomVal != null && bottomVal < 50;
+  /** Separate pulls: additionally ≥120 mm from bottom when already past the 50 mm floor. */
+  const belowSeparate120 =
+    wf === 'separate' && bottomVal != null && bottomVal >= 50 && bottomVal < 120;
   const topClearInvalid =
     wf === 'separate' &&
     bottomVal != null &&
     heightVal != null &&
     heightVal - bottomVal < 120;
-  const bottomInvalid = bottomTooLow || topClearInvalid;
-  const bottomErrorText = bottomInvalid
-    ? topClearInvalid && !bottomTooLow
-      ? t.validation.handleMountTopClearance
-      : wf === 'separate'
-        ? t.validation.handleMountBottomMinSeparate
-        : t.validation.handleMountBottomMin50
-    : null;
+  const bottomInvalid = below50 || belowSeparate120 || topClearInvalid;
+  const bottomErrorText = below50
+    ? t.validation.handleMountBottomMin50
+    : belowSeparate120
+      ? t.validation.handleMountBottomMinSeparate
+      : topClearInvalid
+        ? t.validation.handleMountTopClearance
+        : null;
 
   const inputStyle: CSSProperties = {
     width: '100%',
@@ -136,7 +139,7 @@ export function HandleMountPanel({
         </label>
         <input
           type="number"
-          min={minBottomMm}
+          min={50}
           value={bottomMm ?? ''}
           onChange={(e) => {
             const v = e.target.value;
