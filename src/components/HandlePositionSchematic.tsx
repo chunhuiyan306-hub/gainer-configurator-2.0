@@ -1,7 +1,7 @@
 import type { HandleWorkflow } from '../data';
 
 /**
- * Schematic front elevation: white panel, double black frame, horizontal handle bar.
+ * Schematic front elevation: white panel, double black frame, vertical handle on pull side.
  * Geometry uses real W×H (mm) in viewBox so scale is consistent (~1:40…1:50 on screen via max size).
  */
 export function HandlePositionSchematic({
@@ -31,31 +31,39 @@ export function HandlePositionSchematic({
   const b = bottomMm ?? (workflow === 'separate' ? 960 : 960);
   const yCenter = Math.min(Math.max(h - b, 60), h - 60);
 
-  let halfLen: number;
-  if (workflow === 'separate' || workflow === 'fixed') {
-    halfLen = separateLengthMm / 2;
-  } else if (fullLength) {
-    halfLen = (w - 100) / 2;
-  } else {
-    halfLen = Math.max((lengthMm ?? 160) / 2, 40);
-  }
-
   const margin = Math.max(28, Math.min(56, w * 0.06));
   const inner = margin * 0.45;
-  const rail = Math.max(10, Math.min(22, w * 0.028));
-  const rightInset = margin + w * 0.08;
-  const cx = w - rightInset;
-  let x1 = cx - halfLen;
-  let x2 = cx + halfLen;
   const innerL = margin + inner;
   const innerR = w - margin - inner;
   const innerT = margin + inner;
   const innerB = h - margin - inner;
-  x1 = Math.max(innerL + rail, x1);
-  x2 = Math.min(innerR - rail, x2);
-  if (workflow === 'cnc' && fullLength) {
-    x1 = innerL + 16;
-    x2 = innerR - 16;
+
+  /** Handle thickness (horizontal extent of the vertical bar). */
+  const rail = Math.max(10, Math.min(22, w * 0.028));
+  const rightInset = margin + w * 0.08;
+  const cx = w - rightInset;
+  const handleX = Math.min(Math.max(cx - rail / 2, innerL + 8), innerR - rail - 8);
+
+  let y1: number;
+  let y2: number;
+  if (fullLength) {
+    y1 = innerT + 16;
+    y2 = innerB - 16;
+  } else {
+    let halfVert: number;
+    if (workflow === 'separate' || workflow === 'fixed') {
+      halfVert = Math.max(separateLengthMm / 2, 20);
+    } else {
+      halfVert = Math.max((lengthMm ?? 160) / 2, 40);
+    }
+    y1 = yCenter - halfVert;
+    y2 = yCenter + halfVert;
+    y1 = Math.max(innerT + rail, y1);
+    y2 = Math.min(innerB - rail, y2);
+    if (y2 <= y1) {
+      y1 = innerT + 20;
+      y2 = innerB - 20;
+    }
   }
 
   const showHandle = workflow !== 'none' && workflow !== 'vshape';
@@ -124,10 +132,10 @@ export function HandlePositionSchematic({
           {showHandle ? (
             <g>
               <rect
-                x={x1}
-                y={yCenter - rail / 2}
-                width={Math.max(x2 - x1, 8)}
-                height={rail}
+                x={handleX}
+                y={y1}
+                width={rail}
+                height={Math.max(y2 - y1, 8)}
                 rx={rail / 4}
                 fill="#2a2a2a"
                 stroke="#000"
