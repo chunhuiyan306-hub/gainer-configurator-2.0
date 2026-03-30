@@ -25,8 +25,12 @@ export function QuotationSheet() {
   const fmtPrice = (n: number) =>
     `¥${n.toLocaleString(currencyLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-  const unitDisplay = snap.total !== null ? fmtPrice(snap.total) : '—';
-  const lineTotal = snap.total !== null ? snap.total * quantity : null;
+  const pricingVisible = snap.showPricing !== false;
+
+  const unitDisplay =
+    pricingVisible && snap.total !== null ? fmtPrice(snap.total) : '—';
+  const lineTotal =
+    pricingVisible && snap.total !== null ? snap.total * quantity : null;
   const totalDisplay = lineTotal !== null ? fmtPrice(lineTotal) : '—';
 
   const finishSpec =
@@ -260,12 +264,23 @@ export function QuotationSheet() {
         >
           {t.tblLinePrice}
         </p>
-        {snap.priceLines.length === 0 ? (
+        {!pricingVisible ? (
+          <p style={{ fontSize: 14, color: 'var(--text-secondary)', maxWidth: 560 }}>
+            {snap.summary}
+          </p>
+        ) : snap.priceLines.length === 0 ? (
           <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>{t.completeForPricing}</p>
         ) : (
           <ul style={{ margin: 0, paddingLeft: 20, fontSize: 14, lineHeight: 1.7 }}>
             {snap.priceLines.map((line, i) => (
-              <li key={`${line.label}-${i}`}>
+              <li
+                key={`${line.label}-${i}`}
+                style={
+                  line.emphasis === 'customGlass'
+                    ? { color: '#c62828' }
+                    : undefined
+                }
+              >
                 <span>{line.label}</span>
                 {line.amount != null ? (
                   <strong style={{ marginLeft: 8 }}>
@@ -284,6 +299,19 @@ export function QuotationSheet() {
                   >
                     TBA
                   </span>
+                ) : null}
+                {line.detail ? (
+                  <div
+                    style={{
+                      marginTop: 4,
+                      marginLeft: 0,
+                      fontSize: 12,
+                      color: 'var(--text-secondary)',
+                      listStyle: 'none',
+                    }}
+                  >
+                    {line.detail}
+                  </div>
                 ) : null}
               </li>
             ))}
@@ -334,6 +362,11 @@ export function QuotationSheet() {
           >
             {totalDisplay}
           </p>
+          {pricingVisible && snap.hasCustomGlassPremium ? (
+            <p style={{ margin: '6px 0 0', fontSize: 12, color: '#c62828', fontWeight: 600 }}>
+              {t.price.customGlassLeadTimeHint}
+            </p>
+          ) : null}
           {snap.hasCustomItems ? (
             <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--text-secondary)' }}>
               {t.customPricingNote}

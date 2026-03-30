@@ -14,10 +14,15 @@ import {
   surfaceFinishes,
   hardwareList,
   handleList,
-  frameStandardGlassPricingByCode,
   getHardwareByCode,
   getMatchedHandles,
 } from './data';
+import {
+  MIN_BILLABLE_AREA_M2,
+  resolveAluminumCabinetGlassSqm,
+  frameHasAluminumPriceMatrix,
+  isGlassUnavailableForAluminumFrame,
+} from './aluminumFramePricing';
 import { msg, readStoredLocale, writeStoredLocale, type UiLocale } from './translations';
 import {
   clampHingePositionMm,
@@ -118,13 +123,20 @@ export interface PriceLine {
   label: string;
   amount: number | null;
   status: PriceLineStatus;
+  /** Extra note (e.g. min billable area). */
+  detail?: string;
+  /** Quotation / list styling hint. */
+  emphasis?: 'customGlass';
 }
 
 export interface PriceBreakdown {
   area: number;
+  billableAreaM2: number | null;
   lines: PriceLine[];
   total: number | null;
   hasCustomItems: boolean;
+  /** True when infill uses off–price-sheet glass (G33 + ¥300 / m² rule). */
+  hasCustomGlassPremium: boolean;
   summary: string;
 }
 
@@ -154,6 +166,10 @@ export interface QuotationSnapshot {
   priceLines: PriceLine[];
   total: number | null;
   hasCustomItems: boolean;
+  /** Cabinet doors: priced; room doors: hidden until product line is finalized. */
+  showPricing?: boolean;
+  billableAreaM2?: number | null;
+  hasCustomGlassPremium?: boolean;
   summary: string;
 }
 
@@ -374,24 +390,6 @@ function findFrame(idOrLegacyCode: string | null): Frame | null {
   if (byId) return byId;
   const sameCode = frames.filter((f) => f.code === idOrLegacyCode);
   return sameCode.length === 1 ? sameCode[0] : null;
-}
-
-// Standard glass G01/G33/G36 tier prices — from Excel via generate_data.py
-const STANDARD_GLASS_CODES = new Set(['G01', 'G33', 'G36']);
-
-function resolveStandardGlassPrice(
-  selectedFrameKey: string | null,
-  glassCode: string,
-): number | null {
-  if (!selectedFrameKey) return null;
-  const f = findFrame(selectedFrameKey);
-  const frameCode = f?.code ?? selectedFrameKey;
-  const tier = frameStandardGlassPricingByCode[frameCode];
-  if (!tier) return null;
-  if (glassCode === 'G01') return tier.normalGlass;
-  if (glassCode === 'G33') return tier.normalGlass;
-  if (glassCode === 'G36') return tier.blackGlass;
-  return null;
 }
 
 // =============================================================================
@@ -1477,6 +1475,8 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
           default: return [];
         }
 
+        const Lval = msg(get().uiLocale).validation;
+
         return pool.map((filler) => {
 
           if (thicknessLimit.length === 0) {
@@ -1496,11 +1496,24 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
             };
           }
 
+          let disabled = false;
+          let disabledReason: string | null = null;
+          if (
+            selectedFillerType === 'glass' &&
+            frame?.frameCategory === 'cabinet' &&
+            frameHasAluminumPriceMatrix(frame.code)
+          ) {
+            if (isGlassUnavailableForAluminumFrame(frame.code, filler.code)) {
+              disabled = true;
+              disabledReason = Lval.glassNotForAluminumFrame;
+            }
+          }
+
           return {
             filler,
-            disabled: false,
-            disabledReason: null,
-            lockedThickness: compatible[0],
+            disabled,
+            disabledReason,
+            lockedThickness: compatible[0]!,
           };
         });
       },
@@ -1624,9 +1637,11 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
 
         const emptyBreakdown: PriceBreakdown = {
           area: 0,
+          billableAreaM2: null,
           lines: [],
           total: null,
           hasCustomItems: false,
+          hasCustomGlassPremium: false,
           summary: L.empty,
         };
 
@@ -1636,20 +1651,41 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
         const lines: PriceLine[] = [];
         let hasCustom = false;
         let runningTotal = 0;
+        let billableAreaM2: number | null = null;
+        let hasCustomGlassPremium = false;
 
-        // --- Frame + Standard Filler combined price ---
+        const frame = findFrame(selectedFrameCode);
+        if (frame?.frameCategory === 'room') {
+          return {
+            area,
+            billableAreaM2: null,
+            lines: [],
+            total: null,
+            hasCustomItems: false,
+            hasCustomGlassPremium: false,
+            summary: L.roomDoorNoPrice,
+          };
+        }
+
+        // --- Frame + filler (cabinet / non-room) ---
         if (selectedFrameCode && selectedFillerCode) {
-          const frame = findFrame(selectedFrameCode);
           const labelCode = frame?.code ?? selectedFrameCode;
-          const isStandard = STANDARD_GLASS_CODES.has(selectedFillerCode);
-          if (isStandard) {
-            const sqmPrice = resolveStandardGlassPrice(selectedFrameCode, selectedFillerCode);
-            if (sqmPrice !== null) {
-              const lineTotal = Math.round(area * sqmPrice * 100) / 100;
+          const fillerGlass = glassList.find((x) => x.code === selectedFillerCode);
+
+          if (frame && fillerGlass && frame.frameCategory === 'cabinet') {
+            const quote = resolveAluminumCabinetGlassSqm(frame.code, selectedFillerCode);
+            billableAreaM2 = Math.max(area, MIN_BILLABLE_AREA_M2);
+
+            if (quote.pricePerSqm !== null) {
+              const lineTotal = Math.round(billableAreaM2 * quote.pricePerSqm * 100) / 100;
+              const isPremium = quote.mode === 'customPremium';
+              if (isPremium) hasCustomGlassPremium = true;
               lines.push({
                 label: L.frameGlass(labelCode, selectedFillerCode),
                 amount: lineTotal,
                 status: 'calculated',
+                detail: L.minBillableAreaNote(area.toFixed(3), billableAreaM2.toFixed(2)),
+                emphasis: isPremium ? 'customGlass' : undefined,
               });
               runningTotal += lineTotal;
             } else {
@@ -1669,7 +1705,6 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
             hasCustom = true;
           }
         } else if (selectedFrameCode) {
-          const frame = findFrame(selectedFrameCode);
           const labelCode = frame?.code ?? selectedFrameCode;
           lines.push({
             label: L.frameAwaitFiller(labelCode),
@@ -1735,7 +1770,15 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
           ? L.subtotalCustom(runningTotal.toFixed(2))
           : L.total(runningTotal.toFixed(2));
 
-        return { area, lines, total, hasCustomItems: hasCustom, summary };
+        return {
+          area,
+          billableAreaM2,
+          lines,
+          total,
+          hasCustomItems: hasCustom,
+          hasCustomGlassPremium,
+          summary,
+        };
       },
 
       // =====================================================================
@@ -2068,6 +2111,8 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
 
         const hw0 = hingeCalc.effectiveHardware ?? hingeCalc.matchedHardware[0];
 
+        const showPricing = frame == null || frame.frameCategory !== 'room';
+
         return {
           widthMm: w,
           heightMm: h,
@@ -2096,10 +2141,13 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
           hingeColor: s.selectedHingeColor,
           generatedSku: get().getGeneratedSku(),
           fullConfigSku: get().getConfigurationSku(),
-          priceLines: price.lines,
-          total: price.total,
-          hasCustomItems: price.hasCustomItems,
-          summary: price.summary,
+          priceLines: showPricing ? price.lines : [],
+          total: showPricing ? price.total : null,
+          hasCustomItems: showPricing ? price.hasCustomItems : false,
+          showPricing,
+          billableAreaM2: showPricing ? price.billableAreaM2 : null,
+          hasCustomGlassPremium: showPricing ? price.hasCustomGlassPremium : false,
+          summary: showPricing ? price.summary : L.price.roomDoorNoPrice,
         };
       },
     }),

@@ -931,7 +931,6 @@ _cab_cols = _cabinet_door_column_map(ws_cab, 2)
 _cab_cols["thinkness"] = _fix_thinkness_col(_cab_hdr, 6)
 
 frames = []
-frame_standard_glass_prices = {}
 
 category = "cabinet"
 for r in range(3, ws_cab.max_row + 1):
@@ -998,7 +997,6 @@ for r in range(3, ws_cab.max_row + 1):
     handle_raw = ws_cab.cell(r, cc["handle"]).value
     surface_raw = ws_cab.cell(r, cc["surface"]).value
     std_filler_raw = ws_cab.cell(r, cc["std_filler"]).value
-    price_raw = ws_cab.cell(r, cc["price"]).value
     thickness_raw = ws_cab.cell(r, cc["filler_thickness"]).value
     hardware_raw = ws_cab.cell(r, cc["hardware"]).value
     hinge_code_raw = ws_cab.cell(r, cc["hinge_code"]).value
@@ -1056,10 +1054,6 @@ for r in range(3, ws_cab.max_row + 1):
     hinge_codes = [
         normalize_hinge_code_for_catalog(c) for c in parse_hinge_codes(hinge_code_raw)
     ]
-
-    gp = parse_glass_prices_cell(price_raw)
-    if gp:
-        frame_standard_glass_prices[code] = gp
 
     frames.append({
         "id": frame_id,
@@ -1541,12 +1535,6 @@ export interface Frame {
   picture: string | null;
 }
 
-export interface FrameGlassPricing {
-  normalGlass: number | null;
-  blackGlass: number | null;
-  coatedGlass: number | null;
-}
-
 export interface Glass {
   code: string;
   name: string;
@@ -1626,21 +1614,9 @@ out_parts.append("// 1. Frames — 柜门 cabinet / 房门 room (same Excel shee
 out_parts.append("// ---------------------------------------------------------------------------\n")
 out_parts.append(ts_array(frames, "frames"))
 
-# ---- Standard glass combo pricing (parsed from Excel price column) ----
-def _ts_frame_pricing_map(prices: dict) -> str:
-    lines = []
-    for k in sorted(prices.keys()):
-        v = prices[k]
-        inner = ", ".join(
-            f"{x}: {to_ts_val(v[x])}" for x in ("normalGlass", "blackGlass", "coatedGlass")
-        )
-        lines.append(f"  {to_ts_val(k)}: {{ {inner} }}")
-    return "export const frameStandardGlassPricingByCode: Record<string, FrameGlassPricing> = {\n" + ",\n".join(lines) + "\n};\n"
-
 out_parts.append("\n// ---------------------------------------------------------------------------")
-out_parts.append("// 1b. Frame + standard glass (G01/G33/G36 tier) reference pricing from Excel")
+out_parts.append("// 1b. Aluminum cabinet glass sqm matrix: maintain src/aluminumFramePricing.ts (from price.xlsx).")
 out_parts.append("// ---------------------------------------------------------------------------\n")
-out_parts.append(_ts_frame_pricing_map(frame_standard_glass_prices))
 
 # ---- Glass ----
 out_parts.append("\n// ---------------------------------------------------------------------------")

@@ -150,6 +150,8 @@ const M = {
 
     price: {
       empty: '请完成全部选项以查看价格。',
+      roomDoorNoPrice: '房门体系价格待完善，线上不显示金额；请咨询销售获取报价。',
+      roomDoorPriceBarHint: '房门：询价',
       frameGlass: (f: string, g: string) => `门框 (${f}) + 玻璃 (${g})`,
       frameFiller: (f: string, g: string) => `门框 (${f}) + 填充 (${g})`,
       frameAwaitFiller: (f: string) => `门框 (${f}) — 待选填充物`,
@@ -159,6 +161,10 @@ const M = {
       baseMaterial: (b: string) => `基材：${b}`,
       subtotalCustom: (n: string) => `小计：¥${n} + 定制项（另议）— 请联系销售。`,
       total: (n: string) => `合计：¥${n}`,
+      minBillableAreaNote: (actual: string, billed: string) =>
+        `展开面积 ${actual}㎡；不足 0.5㎡ 按 ${billed}㎡ 计费`,
+      customGlassLeadTimeHint: '（特殊定制玻璃：在欧洲灰 G33 单价基础上 +¥300/㎡，货期约多 1 周）',
+      customGlassTileBadge: '特殊定制 · 货期+约1周',
     },
 
     validation: {
@@ -184,6 +190,7 @@ const M = {
         '天地铰链 / 重型天地铰链：门高须严格小于 2700 mm，请减小高度或更换门框。',
       hingePositionOutOfRange:
         '铰链孔位须距顶、距底各≥50 mm，且相对标配孔上下浮动不超过 ±50 mm。',
+      glassNotForAluminumFrame: '该门框型材的报价表不包含此款玻璃（或厚度不匹配），不可选。',
     },
     q: {
       width: '宽度 W',
@@ -343,6 +350,9 @@ const M = {
 
     price: {
       empty: 'Complete all selections to see pricing.',
+      roomDoorNoPrice:
+        'Interior door pricing is not shown online yet. Contact sales for a formal quote.',
+      roomDoorPriceBarHint: 'Interior door — request quote',
       frameGlass: (f: string, g: string) => `Frame (${f}) + glass (${g})`,
       frameFiller: (f: string, g: string) => `Frame (${f}) + infill (${g})`,
       frameAwaitFiller: (f: string) => `Frame (${f}) — select infill`,
@@ -352,6 +362,11 @@ const M = {
       baseMaterial: (b: string) => `Substrate: ${b}`,
       subtotalCustom: (n: string) => `Subtotal: ¥${n} + custom (TBA) — contact sales.`,
       total: (n: string) => `Total: ¥${n}`,
+      minBillableAreaNote: (actual: string, billed: string) =>
+        `Area ${actual} m²; orders below 0.5 m² are billed at ${billed} m²`,
+      customGlassLeadTimeHint:
+        '(Special-order glass: European grey G33 rate + ¥300/m²; lead time ≈ +1 week)',
+      customGlassTileBadge: 'Special order · +~1 week',
     },
 
     validation: {
@@ -377,6 +392,8 @@ const M = {
         'Air / heavy-duty air hinge: door height must be strictly under 2700 mm — reduce height or change frame.',
       hingePositionOutOfRange:
         'Hinge holes must be ≥50 mm from top and bottom, and within ±50 mm of each standard position.',
+      glassNotForAluminumFrame:
+        'This frame has no list price for that glass (or thickness is not allowed).',
     },
     q: {
       width: 'Width W',

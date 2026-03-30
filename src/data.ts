@@ -73,12 +73,6 @@ export interface Frame {
   picture: string | null;
 }
 
-export interface FrameGlassPricing {
-  normalGlass: number | null;
-  blackGlass: number | null;
-  coatedGlass: number | null;
-}
-
 export interface Glass {
   code: string;
   name: string;
@@ -935,26 +929,8 @@ export const frames = [
 
 
 // ---------------------------------------------------------------------------
-// 1b. Frame + standard glass (G01/G33/G36 tier) reference pricing from Excel
+// 1b. Aluminum cabinet glass sqm matrix + rules: see `src/aluminumFramePricing.ts` (from price.xlsx).
 // ---------------------------------------------------------------------------
-
-export const frameStandardGlassPricingByCode: Record<string, FrameGlassPricing> = {
-  'GM004': { normalGlass: 680, blackGlass: 760, coatedGlass: 830 },
-  'GM023': { normalGlass: 480, blackGlass: 560, coatedGlass: 630 },
-  'GM043': { normalGlass: 680, blackGlass: 760, coatedGlass: 830 },
-  'GM054': { normalGlass: 580, blackGlass: 660, coatedGlass: 730 },
-  'GM072': { normalGlass: 680, blackGlass: 760, coatedGlass: 830 },
-  'GM073': { normalGlass: 780, blackGlass: 860, coatedGlass: 930 },
-  'GM090': { normalGlass: 380, blackGlass: 460, coatedGlass: 530 },
-  'GM106': { normalGlass: 580, blackGlass: 660, coatedGlass: 730 },
-  'MK073': { normalGlass: 680, blackGlass: 760, coatedGlass: 830 },
-  'MK118': { normalGlass: 580, blackGlass: 660, coatedGlass: 730 },
-  'MK162': { normalGlass: 680, blackGlass: 760, coatedGlass: 830 },
-  'MK169': { normalGlass: 680, blackGlass: 760, coatedGlass: 830 },
-  'MK304': { normalGlass: 680, blackGlass: 760, coatedGlass: 830 },
-  'MK336': { normalGlass: 850, blackGlass: 930, coatedGlass: 1000 }
-};
-
 
 // ---------------------------------------------------------------------------
 // 2. Glass Fillers
@@ -1380,6 +1356,18 @@ export const glassList = [
     pricingType: 'custom',
     priceSqm: null,
     picture: '/assets/catalog/glass/G35.png',
+  },
+{
+    code: 'G37',
+    name: 'Blue star gray coated glass (蓝星灰镀膜玻璃)',
+    type: 'glass',
+    craft: 'Coated',
+    craftCode: 'P08',
+    thicknesses: [5],
+    silkScreen: false,
+    pricingType: 'standard',
+    priceSqm: null,
+    picture: '/assets/catalog/glass/G29.png',
   },
 {
     code: 'G36',
@@ -2036,35 +2024,35 @@ export const hardwareList = [
     code: 'AIRHINGE',
     name: 'Air Hinge',
     allowedColors: ['black', 'gray', 'gold'],
-    pricePerPiece: 120,
+    pricePerPiece: 140,
     picture: '/assets/catalog/hardware/AIRHINGE.png',
   },
 {
     code: 'HD-AIRHINGE',
     name: 'Heavy duty air hinge',
     allowedColors: ['black', 'gray', 'gold'],
-    pricePerPiece: 180,
+    pricePerPiece: 200,
     picture: '/assets/catalog/hardware/HD-AIRHINGE.png',
   },
 {
     code: 'HG-A21',
     name: 'Type A Pin Hinge with Plastic Cover (2.1)',
     allowedColors: ['black', 'gray', 'gold'],
-    pricePerPiece: 220,
+    pricePerPiece: 240,
     picture: '/assets/catalog/hardware/HG-A21.png',
   },
 {
     code: 'HG-BLUM',
     name: 'Blum Cup Hinge',
     allowedColors: ['silver'],
-    pricePerPiece: 78,
+    pricePerPiece: 88,
     picture: '/assets/catalog/hardware/HG-BLUM.png',
   },
 {
     code: 'HG-SEN',
     name: 'Sensys 8638i Concealed Quick-assembly Hinge (Full Overlay/ Half Overlay/ Inset Hinge)',
     allowedColors: ['silver'],
-    pricePerPiece: 78,
+    pricePerPiece: 88,
     picture: '/assets/catalog/hardware/HG-SEN.png',
   },
 {
@@ -2078,8 +2066,15 @@ export const hardwareList = [
     code: 'HG-RYG',
     name: 'Pin Hinge',
     allowedColors: ['black', 'grey', 'gold'],
-    pricePerPiece: 220,
+    pricePerPiece: 240,
     picture: '/assets/catalog/hardware/HG-RYG.png',
+  },
+{
+    code: 'AN 172 3D',
+    name: 'AN 172 3D',
+    allowedColors: ['antique bronze', 'black'],
+    pricePerPiece: null,
+    picture: null,
   },
 {
     /** Placeholder — no frame maps to this row yet; hinge rules TBD when a product code is assigned. */
@@ -2128,7 +2123,7 @@ export const hardwareList = [
     code: 'HG-SLCQ',
     name: 'Salichi-CQ Concealed Wooden Door Hinge T12 (Half Overlay)',
     allowedColors: ['black', 'grey', 'gold'],
-    pricePerPiece: null,
+    pricePerPiece: 240,
     picture: '/assets/catalog/hardware/HG-SLCQ.png',
   },
 {

@@ -26,15 +26,21 @@ export function PriceBar() {
 
   const currencyLocale = uiLocale === 'zh' ? 'zh-CN' : 'en-US';
 
+  const pricingVisible = snap.showPricing !== false;
+
   const unitDisplay =
-    snap.total !== null
-      ? `¥${snap.total.toLocaleString(currencyLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-      : '—';
+    !pricingVisible
+      ? '—'
+      : snap.total !== null
+        ? `¥${snap.total.toLocaleString(currencyLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+        : '—';
 
   const lineDisplay =
-    snap.total !== null
-      ? `¥${(snap.total * quantity).toLocaleString(currencyLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-      : '—';
+    !pricingVisible
+      ? '—'
+      : snap.total !== null
+        ? `¥${(snap.total * quantity).toLocaleString(currencyLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+        : '—';
 
   const chips: string[] = [];
   if (snap.frameCode) chips.push(snap.frameCode);
@@ -160,6 +166,11 @@ export function PriceBar() {
           <p style={{ margin: 0, fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em' }}>
             {lineDisplay}
           </p>
+          {!pricingVisible ? (
+            <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--text-secondary)' }}>
+              {t.price.roomDoorPriceBarHint}
+            </p>
+          ) : null}
         </div>
 
         {/* Add to Cart + Cart badge */}

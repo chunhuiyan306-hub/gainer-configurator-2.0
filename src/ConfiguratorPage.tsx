@@ -15,6 +15,10 @@ import { PriceBar } from './components/PriceBar';
 import { QuotationSheet } from './components/QuotationSheet';
 import { CartDrawer } from './components/CartDrawer';
 import { msg, type UiLocale } from './translations';
+import {
+  frameHasAluminumPriceMatrix,
+  isOffSheetCustomGlass,
+} from './aluminumFramePricing';
 
 type UiMessages = ReturnType<typeof msg>;
 
@@ -431,6 +435,13 @@ export function ConfiguratorPage() {
               <div style={gridStyle}>
                 {fillerOptions.map(({ filler, disabled, lockedThickness }) => {
                   const selected = selectedFillerCode === filler.code;
+                  const customGlassBadge =
+                    selectedFillerType === 'glass' &&
+                    frame &&
+                    frame.frameCategory === 'cabinet' &&
+                    frameHasAluminumPriceMatrix(frame.code) &&
+                    isOffSheetCustomGlass(filler.code) &&
+                    !disabled;
                   return (
                     <SelectableTile
                       key={filler.code}
@@ -449,10 +460,23 @@ export function ConfiguratorPage() {
                             WebkitLineClamp: 3,
                             WebkitBoxOrient: 'vertical',
                             overflow: 'hidden',
+                            color: customGlassBadge ? '#c62828' : undefined,
                           }}
                         >
                           {fillerLabel(filler)}
                         </div>
+                        {customGlassBadge ? (
+                          <div
+                            style={{
+                              marginTop: 6,
+                              fontSize: 11,
+                              fontWeight: 700,
+                              color: '#c62828',
+                            }}
+                          >
+                            {t.price.customGlassTileBadge}
+                          </div>
+                        ) : null}
                         {!disabled && lockedThickness !== null ? (
                           <div
                             style={{ marginTop: 6, fontSize: 11, color: 'var(--accent)' }}
