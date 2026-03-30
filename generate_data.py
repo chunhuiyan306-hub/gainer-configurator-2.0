@@ -14,6 +14,10 @@ Rows using Excel DISPIMG() without true embedded drawings will have no extracted
 paste images into the sheet or add files under public/assets/catalog/cabinet-door/ manually.
 
 Override path: set env GAINER_EXCEL to the .xlsx file.
+
+After changing embedded pictures in Excel, run `python generate_data.py` and deploy so
+`src/data.ts` and `public/assets/catalog/cabinet-door/` stay in sync (otherwise the
+site can show old thumbnails or missing Side view / Profile buttons).
 """
 
 import os
@@ -110,10 +114,20 @@ def _image_at_row_col(ws, excel_row: int, col_1based: int):
     return None
 
 
-def _cabinet_door_row_product_code(ws, excel_row: int) -> str:
-    """Column A SKU for this datasheet row (Cabinet Door sheet)."""
-    v = ws.cell(excel_row, 1).value
-    return str(v).strip() if v is not None else ""
+def _cabinet_door_resolved_sku(ws, excel_row: int) -> str:
+    """SKU for this row: column A, walking up through blank cells (merged multi-row blocks)."""
+    for r in range(excel_row, 2, -1):
+        v = ws.cell(r, 1).value
+        if v is None or str(v).strip() == "":
+            continue
+        s = str(v).strip()
+        sl = s.lower()
+        if sl == "cabinet door":
+            continue
+        if "interior" in sl and "door" in sl:
+            continue
+        return s
+    return ""
 
 
 def _extract_door_triplet_slot(
@@ -124,14 +138,14 @@ def _extract_door_triplet_slot(
     subdir: str,
     basename: str,
     *,
-    row_slack: int = 1,
+    row_slack: int = 2,
 ) -> str | None:
     """
     Main / side / profile picture for one column only (C=3, D=4, E=5).
 
-    Excel anchors are often off by one row; we only search rows that still belong
-    to the same product (column A == product_code). We never substitute another
-    column (e.g. use col 4 “side” as col 3 “main”).
+    Excel anchors are often off by a row or two; we only search rows that resolve to
+    the same SKU (column A, including merged continuations). We never substitute
+    another column (e.g. use col 4 “side” as col 3 “main”).
     """
     code = str(product_code or "").strip()
     if not code:
@@ -141,8 +155,8 @@ def _extract_door_triplet_slot(
         r2 = excel_row + dr
         if r2 < 3:
             continue
-        row_code = _cabinet_door_row_product_code(ws, r2)
-        if row_code and row_code != code:
+        row_sku = _cabinet_door_resolved_sku(ws, r2)
+        if row_sku and row_sku != code:
             continue
         im = _image_at_row_col(ws, r2, col_1based)
         if im:
@@ -974,8 +988,8 @@ for r in range(3, ws_cab.max_row + 1):
         f"{frame_id}-hinge",
         prefer_cols=[cc["hinge_picture"], cc["hinge_picture"] - 1, cc["hw_color"]],
     )
-    # Prefer true main; if column C is empty in Excel, avoid using side as hero (common mistake).
-    picture = picture_main or picture_profile or picture_side
+    # List thumbnail: main (C) → side (D) → profile (E).
+    picture = picture_main or picture_side or picture_profile
     pics = [u for u in (picture_main, picture_side, picture_profile) if u]
 
     think_raw = ws_cab.cell(r, cc["thinkness"]).value
