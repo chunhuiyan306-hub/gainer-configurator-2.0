@@ -19,6 +19,12 @@ import {
   getMatchedHandles,
 } from './data';
 import { msg, readStoredLocale, writeStoredLocale, type UiLocale } from './translations';
+import {
+  clampHingePositionMm,
+  resolveHingeLayout,
+  validateHingePositionsMm,
+  type HingeRuleset,
+} from './hingeLayout';
 
 /** Coerce stored mm fields to finite numbers (guards against string/NaN from edge cases). */
 function finiteNullableMm(v: number | null | undefined): number | null {
@@ -89,10 +95,21 @@ export interface HingeCalculation {
   qty: number;
   usePivot: boolean;
   pivotWarning: string | null;
+  /** Air / heavy-duty air: height must be < 2700 mm. */
+  airHingeHeightWarning: string | null;
   availableColors: string[];
   matchedHardware: Hardware[];
   /** Resolved from selectedHingeHardwareCode, else first match. */
   effectiveHardware: Hardware | null;
+  hingeRuleset: HingeRuleset;
+  /** Current hinge hole centers from door bottom (mm), sorted bottom → top. */
+  positionsFromBottomMm: number[];
+  nominalPositionsFromBottomMm: number[];
+  hingeFloatMm: number;
+  /** User may edit positions (±floatMm vs nominal). */
+  positionsEditable: boolean;
+  /** Pin hinge: optional 3rd hole between the two standards. */
+  pinThirdHingeAvailable: boolean;
 }
 
 export type PriceLineStatus = 'calculated' | 'tba' | 'included';
@@ -188,6 +205,11 @@ interface ConfiguratorState {
   /** hardwareList code when multiple hinges (e.g. HG-BLUM vs HG-SEN). */
   selectedHingeHardwareCode: string | null;
 
+  /** Hinge axis heights from door bottom (mm); reset when frame / height / hinge / pin option changes. */
+  hingePositionsFromBottomMm: number[];
+  /** Pin hinge: add middle hole (3 hinges). */
+  pinThirdHingeEnabled: boolean;
+
   /** Handle center (or datum) height from door bottom, mm — default 960. */
   handleBottomMm: number | null;
   /** CNC / custom pull length, mm — default 160; ignored when handleCncFullLength. */
@@ -222,6 +244,8 @@ interface ConfiguratorActions {
   setHandleMount: (bottomMm: number | null, lengthMm: number | null, cncFull: boolean) => void;
   selectHingeColor: (color: string | null) => void;
   selectHingeHardware: (hardwareCode: string | null) => void;
+  setHingePositionIndex: (index: number, mmFromBottom: number) => void;
+  setPinThirdHinge: (enabled: boolean) => void;
   reset: () => void;
   resetConfiguration: () => void;
   confirmConfiguration: () => void;
@@ -301,6 +325,8 @@ const initialState: ConfiguratorState = {
   handleCncFullLength: false,
   selectedHingeColor: null,
   selectedHingeHardwareCode: null,
+  hingePositionsFromBottomMm: [],
+  pinThirdHingeEnabled: false,
   configurationConfirmed: false,
   cartItems: loadCart(),
   cartOpen: false,
@@ -326,6 +352,8 @@ const clearFromFinish: Partial<ConfiguratorState> = {
   handleCncFullLength: false,
   selectedHingeColor: null,
   selectedHingeHardwareCode: null,
+  hingePositionsFromBottomMm: [],
+  pinThirdHingeEnabled: false,
   configurationConfirmed: false,
 };
 
@@ -581,6 +609,20 @@ function hingeColorsForEffectiveHardware(
   return baseFrameHingeColors(frame);
 }
 
+function buildHingePositionPatch(s: {
+  selectedFrameCode: string | null;
+  height: number | null;
+  selectedHingeHardwareCode: string | null;
+  pinThirdHingeEnabled: boolean;
+}): { hingePositionsFromBottomMm: number[] } {
+  const frame = findFrame(s.selectedFrameCode);
+  if (!frame) return { hingePositionsFromBottomMm: [] };
+  const H = finiteNullableMm(s.height);
+  const eff = resolvePickedHingeHardware(frame, s.selectedHingeHardwareCode);
+  const layout = resolveHingeLayout(H, eff?.code ?? null, s.pinThirdHingeEnabled);
+  return { hingePositionsFromBottomMm: [...layout.positionsNominalFromBottomMm] };
+}
+
 function skuSanitize(part: string): string {
   return part.replace(/[^a-zA-Z0-9]/g, '').toUpperCase() || 'X';
 }
@@ -814,7 +856,11 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
       // =====================================================================
       setDimensions: (w, h) => {
         const state = get();
-        const updates: Partial<ConfiguratorState> = { width: w, height: h };
+        const updates: Partial<ConfiguratorState> = {
+          width: w,
+          height: h,
+          configurationConfirmed: false,
+        };
 
         if (state.selectedFrameCode) {
           const frame = findFrame(state.selectedFrameCode);
@@ -828,7 +874,9 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
             }
           }
         }
-        set({ ...updates, configurationConfirmed: false }, undefined, 'setDimensions');
+        const merged = { ...state, ...updates };
+        Object.assign(updates, buildHingePositionPatch(merged));
+        set(updates, undefined, 'setDimensions');
       },
 
       // =====================================================================
@@ -887,18 +935,20 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
         const autoHingeHw =
           mhList[0]?.code != null ? String(mhList[0].code) : null;
 
+        const nextPartial: Partial<ConfiguratorState> = {
+          selectedFrameCode: code,
+          ...clearFromFinish,
+          selectedHandleCode: autoHandleCode,
+          handleBottomMm: 960,
+          handleLengthMm: 160,
+          handleCncFullLength: false,
+          selectedHingeColor: autoHingeColor,
+          selectedHingeHardwareCode: autoHingeHw,
+          configurationConfirmed: false,
+        };
+        const merged = { ...state, ...nextPartial };
         set(
-          {
-            selectedFrameCode: code,
-            ...clearFromFinish,
-            selectedHandleCode: autoHandleCode,
-            handleBottomMm: 960,
-            handleLengthMm: 160,
-            handleCncFullLength: false,
-            selectedHingeColor: autoHingeColor,
-            selectedHingeHardwareCode: autoHingeHw,
-            configurationConfirmed: false,
-          },
+          { ...nextPartial, ...buildHingePositionPatch(merged) },
           undefined,
           'selectFrame',
         );
@@ -1185,12 +1235,48 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
               nextColor = colors[0] ?? null;
             }
           }
-          return {
+          const next = {
+            ...s,
             selectedHingeHardwareCode: hardwareCode,
             selectedHingeColor: nextColor,
             configurationConfirmed: false,
           };
+          return {
+            ...next,
+            ...buildHingePositionPatch(next),
+          };
         }, undefined, 'selectHingeHardware');
+      },
+
+      setHingePositionIndex: (index, mmFromBottom) => {
+        set((s) => {
+          const frame = findFrame(s.selectedFrameCode);
+          const H = finiteNullableMm(s.height);
+          if (!frame || H == null || H <= 0) return s;
+          const eff = resolvePickedHingeHardware(frame, s.selectedHingeHardwareCode);
+          const layout = resolveHingeLayout(H, eff?.code ?? null, s.pinThirdHingeEnabled);
+          const nom = layout.positionsNominalFromBottomMm[index];
+          if (nom == null) return s;
+          const clamped = clampHingePositionMm(mmFromBottom, nom, H, layout.floatMm);
+          const arr = [...s.hingePositionsFromBottomMm];
+          if (index < 0 || index >= arr.length) return s;
+          arr[index] = clamped;
+          return { hingePositionsFromBottomMm: arr, configurationConfirmed: false };
+        }, undefined, 'setHingePositionIndex');
+      },
+
+      setPinThirdHinge: (enabled) => {
+        set((s) => {
+          const next = {
+            ...s,
+            pinThirdHingeEnabled: enabled,
+            configurationConfirmed: false,
+          };
+          return {
+            ...next,
+            ...buildHingePositionPatch(next),
+          };
+        }, undefined, 'setPinThirdHinge');
       },
 
       // =====================================================================
@@ -1446,8 +1532,11 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
       // hinge is needed, and resolves available colors.
       // =====================================================================
       getHingeCalculation: (): HingeCalculation => {
-        const { height, selectedHingeHardwareCode } = get();
-        const frame = findFrame(get().selectedFrameCode);
+        const s = get();
+        const { height, selectedHingeHardwareCode, hingePositionsFromBottomMm, pinThirdHingeEnabled } =
+          s;
+        const frame = findFrame(s.selectedFrameCode);
+        const L = msg(s.uiLocale);
 
         const matched = frame ? findMatchedHardware(frame) : [];
         const effectiveHardware = resolvePickedHingeHardware(frame, selectedHingeHardwareCode);
@@ -1462,35 +1551,64 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
             qty: 0,
             usePivot: false,
             pivotWarning: null,
+            airHingeHeightWarning: null,
             availableColors: [],
             matchedHardware: [],
             effectiveHardware: null,
+            hingeRuleset: 'none',
+            positionsFromBottomMm: [],
+            nominalPositionsFromBottomMm: [],
+            hingeFloatMm: 0,
+            positionsEditable: false,
+            pinThirdHingeAvailable: false,
           };
         }
 
-        let qty: number;
-        let usePivot = false;
-        let pivotWarning: string | null = null;
+        const H = finiteNullableMm(height);
+        const layout = resolveHingeLayout(H, effectiveHardware?.code ?? null, pinThirdHingeEnabled);
 
-        if (!height || height <= 0) {
-          qty = 0;
-        } else if (height <= 2000) {
-          qty = 2;
-        } else if (height <= 2500) {
-          qty = 4;
-        } else {
-          qty = 0;
-          usePivot = true;
-          pivotWarning = msg(get().uiLocale).pivotWarning;
+        let pivotWarning: string | null = null;
+        if (layout.usePivot && H != null && H > 0) {
+          pivotWarning = L.pivotWarning;
         }
+
+        const airHingeHeightWarning =
+          layout.airHeightInvalid && layout.ruleset === 'air'
+            ? L.validation.hingeAirMaxHeight
+            : null;
+
+        const qty = layout.airHeightInvalid ? 0 : layout.qty;
+        const usePivot = layout.usePivot;
+        const nominal = layout.positionsNominalFromBottomMm;
+        const stored = hingePositionsFromBottomMm;
+        const useStored =
+          stored.length === nominal.length && nominal.length > 0 && !layout.airHeightInvalid;
+        const positionsFromBottomMm = useStored ? [...stored] : [...nominal];
+
+        const positionsEditable =
+          !usePivot &&
+          qty > 0 &&
+          !layout.airHeightInvalid &&
+          layout.floatMm > 0 &&
+          nominal.length > 0;
+
+        const pinThirdHingeAvailable =
+          layout.ruleset === 'pin' && H != null && H > 0 && !layout.usePivot;
 
         return {
           qty,
           usePivot,
           pivotWarning,
+          airHingeHeightWarning,
           availableColors,
           matchedHardware: matched,
           effectiveHardware,
+          hingeRuleset: layout.ruleset,
+          positionsFromBottomMm,
+          nominalPositionsFromBottomMm: nominal,
+          hingeFloatMm: layout.floatMm,
+          positionsEditable,
+          pinThirdHingeAvailable,
         };
       },
 
@@ -1699,6 +1817,23 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
         }
 
         const hingeCalc = get().getHingeCalculation();
+        if (hingeCalc.airHingeHeightWarning) {
+          errors.push(V.hingeAirMaxHeight);
+        }
+        const Hn = finiteNullableMm(s.height);
+        if (
+          Hn != null &&
+          hingeCalc.positionsFromBottomMm.length > 0 &&
+          hingeCalc.nominalPositionsFromBottomMm.length === hingeCalc.positionsFromBottomMm.length
+        ) {
+          const pv = validateHingePositionsMm(
+            hingeCalc.positionsFromBottomMm,
+            Hn,
+            hingeCalc.nominalPositionsFromBottomMm,
+            hingeCalc.hingeFloatMm,
+          );
+          if (!pv.ok) errors.push(V.hingePositionOutOfRange);
+        }
         if (
           frame?.matchedHardware &&
           hingeCalc.matchedHardware.length > 0 &&

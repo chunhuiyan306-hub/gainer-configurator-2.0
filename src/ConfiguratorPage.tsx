@@ -7,6 +7,7 @@ import {
   type FrameOption,
 } from './useConfiguratorStore';
 import { HandleMountPanel } from './components/HandleMountPanel';
+import { HingeLayoutPanel } from './components/HingeLayoutPanel';
 import { StepSection } from './components/StepSection';
 import { SelectableTile } from './components/SelectableTile';
 import { MediaThumb } from './components/MediaThumb';
@@ -646,6 +647,21 @@ export function ConfiguratorPage() {
             </p>
           ) : null}
 
+          {hingeCalc.airHingeHeightWarning ? (
+            <p
+              style={{
+                padding: '14px 16px',
+                borderRadius: 12,
+                background: 'rgba(220, 53, 69, 0.1)',
+                fontSize: 15,
+                margin: '0 0 16px',
+                color: '#b71c1c',
+              }}
+            >
+              {hingeCalc.airHingeHeightWarning}
+            </p>
+          ) : null}
+
           {frame?.hingeCodes && frame.hingeCodes.length > 0 ? (
             <p
               style={{
@@ -739,6 +755,8 @@ export function ConfiguratorPage() {
               {frame?.matchedHardware && !hingeCalc.usePivot ? '' : t.hingeColorSkip}
             </p>
           )}
+
+          <HingeLayoutPanel t={t} />
 
           <div style={{ marginTop: 28, display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
             <button

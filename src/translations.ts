@@ -78,6 +78,12 @@ const M = {
     hingeQtyLabel: '铰链数量',
     hingePivot: '天地轴（Pivot）',
     hingeEach: (n: number) => `${n} 只`,
+    hingeSchematicTitle: '铰链与拉手开孔示意（比例示意，非加工图）',
+    hingeSegmentD: (i: number) => `D${i + 1}`,
+    hingeHoleFromBottom: (i: number) => `铰链 ${i + 1} 距门底 (mm)`,
+    hingeFixedAirNote: '天地铰链：上下端各 1 孔，位置固定不可调。',
+    hingePinOptionalThird: '加选中间针式铰链（第 3 孔）',
+    hingeFloatHint: '相对标配孔每孔可 ±50 mm；铰链中心距门顶、门底均须 ≥50 mm。',
     totalLabel: '合计',
     areaLabel: (a: string) => `展开面积 ${a}`,
     customPricingNote: '价格计算中包含定制项，需联系客服',
@@ -171,6 +177,10 @@ const M = {
       handleMountTopClearance: '拉手中心距顶部须≥120mm，请调整距底高度或增大门高。',
       handleMountBottomMin50: '拉手距底高度须≥50mm。',
       handleMountLength: '请填写拉手长度（≥50mm）或勾选 CNC 通长。',
+      hingeAirMaxHeight:
+        '天地铰链 / 重型天地铰链：门高须严格小于 2700 mm，请减小高度或更换门框。',
+      hingePositionOutOfRange:
+        '铰链孔位须距顶、距底各≥50 mm，且相对标配孔上下浮动不超过 ±50 mm。',
     },
     q: {
       width: '宽度 W',
@@ -258,6 +268,12 @@ const M = {
     hingeQtyLabel: 'Hinge qty',
     hingePivot: 'Pivot hinge',
     hingeEach: (n: number) => `${n} pcs`,
+    hingeSchematicTitle: 'Hinge & handle layout (schematic, not for fabrication)',
+    hingeSegmentD: (i: number) => `D${i + 1}`,
+    hingeHoleFromBottom: (i: number) => `Hinge ${i + 1} from bottom (mm)`,
+    hingeFixedAirNote: 'Air hinge: top and bottom holes only — fixed, not adjustable.',
+    hingePinOptionalThird: 'Add optional middle pin hinge (3rd hole)',
+    hingeFloatHint: '±50 mm vs standard hole each; hinge center must be ≥50 mm from top and bottom.',
     totalLabel: 'Total',
     areaLabel: (a: string) => `Area ${a}`,
     customPricingNote: 'Estimate includes custom items — contact sales',
@@ -351,6 +367,10 @@ const M = {
       handleMountTopClearance: 'Handle center must be ≥120mm from top — adjust height from bottom or increase door height.',
       handleMountBottomMin50: 'Handle height from bottom must be ≥50mm.',
       handleMountLength: 'Enter handle length (≥50mm) or check full-length CNC.',
+      hingeAirMaxHeight:
+        'Air / heavy-duty air hinge: door height must be strictly under 2700 mm — reduce height or change frame.',
+      hingePositionOutOfRange:
+        'Hinge holes must be ≥50 mm from top and bottom, and within ±50 mm of each standard position.',
     },
     q: {
       width: 'Width W',
