@@ -6,6 +6,7 @@ Cabinet Door sheet (row 2 = header, data from row 3):
   - Rows above the \"Interior DooR\" divider = 柜门 (frameCategory cabinet).
   - Rows below = 房门 (frameCategory room).
   - Column C = main door photo (list thumbnail); D = side view; E = profile section (UI: extra preview buttons).
+    Each slot uses that column only (no cross-fallback). Put the hero/isometric image in C; if C is empty, the row cannot show a correct main view.
   - Column R (18) = hinge picture for Step 6 (separate from door photos).
   - Profile / Cover|Insert from column F; hinge codes from column P (matched to hardware).
 
@@ -106,6 +107,52 @@ def _image_at_row_col(ws, excel_row: int, col_1based: int):
         fr = img.anchor._from
         if fr.row + 1 == excel_row and fr.col + 1 == col_1based:
             return img
+    return None
+
+
+def _cabinet_door_row_product_code(ws, excel_row: int) -> str:
+    """Column A SKU for this datasheet row (Cabinet Door sheet)."""
+    v = ws.cell(excel_row, 1).value
+    return str(v).strip() if v is not None else ""
+
+
+def _extract_door_triplet_slot(
+    ws,
+    excel_row: int,
+    col_1based: int,
+    product_code: str,
+    subdir: str,
+    basename: str,
+    *,
+    row_slack: int = 1,
+) -> str | None:
+    """
+    Main / side / profile picture for one column only (C=3, D=4, E=5).
+
+    Excel anchors are often off by one row; we only search rows that still belong
+    to the same product (column A == product_code). We never substitute another
+    column (e.g. use col 4 “side” as col 3 “main”).
+    """
+    code = str(product_code or "").strip()
+    if not code:
+        return None
+    chosen = None
+    for dr in range(-row_slack, row_slack + 1):
+        r2 = excel_row + dr
+        if r2 < 3:
+            continue
+        row_code = _cabinet_door_row_product_code(ws, r2)
+        if row_code and row_code != code:
+            continue
+        im = _image_at_row_col(ws, r2, col_1based)
+        if im:
+            chosen = im
+            break
+    if chosen:
+        url = _try_save_catalog_image(chosen, subdir, basename)
+        if url:
+            return url
+        return _existing_catalog_url(subdir, basename)
     return None
 
 
@@ -892,30 +939,32 @@ for r in range(3, ws_cab.max_row + 1):
     code = str(code_cell).strip()
     frame_id = f"{category}-{code}"
 
-    picture_main = _extract_cabinet_door_image(
+    picture_main = _extract_door_triplet_slot(
         ws_cab,
         r,
         cc["picture_main"],
+        code,
         "cabinet-door",
         f"{frame_id}-main",
-        prefer_cols=[3, 4, 5, 2, 6],
         row_slack=1,
     )
-    picture_side = _extract_cabinet_door_image(
+    picture_side = _extract_door_triplet_slot(
         ws_cab,
         r,
         cc["picture_side"],
+        code,
         "cabinet-door",
         f"{frame_id}-side",
-        prefer_cols=[4, 3, 5],
+        row_slack=1,
     )
-    picture_profile = _extract_cabinet_door_image(
+    picture_profile = _extract_door_triplet_slot(
         ws_cab,
         r,
         cc["picture_profile"],
+        code,
         "cabinet-door",
         f"{frame_id}-profile",
-        prefer_cols=[5, 4, 3],
+        row_slack=1,
     )
     hinge_picture = _extract_cabinet_door_image(
         ws_cab,
@@ -925,7 +974,8 @@ for r in range(3, ws_cab.max_row + 1):
         f"{frame_id}-hinge",
         prefer_cols=[cc["hinge_picture"], cc["hinge_picture"] - 1, cc["hw_color"]],
     )
-    picture = picture_main or picture_side or picture_profile
+    # Prefer true main; if column C is empty in Excel, avoid using side as hero (common mistake).
+    picture = picture_main or picture_profile or picture_side
     pics = [u for u in (picture_main, picture_side, picture_profile) if u]
 
     think_raw = ws_cab.cell(r, cc["thinkness"]).value
@@ -953,7 +1003,7 @@ for r in range(3, ws_cab.max_row + 1):
             row_slack=0,
         )
     if not handle_diagram_picture:
-        handle_diagram_picture = picture_main
+        handle_diagram_picture = picture_main or picture
 
     door_type = classify_door_type(door_type_raw)
     allowed_fillers = infer_allowed_fillers(door_type_raw, std_filler_raw)
