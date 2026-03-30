@@ -25,6 +25,8 @@ import { msg, readStoredLocale, writeStoredLocale, type UiLocale } from './trans
 // =============================================================================
 
 export type FinishCategory = 'anodize' | 'spraySoftTouch' | 'sprayMetallic';
+/** Handle step: anodize vs combined spray (亲肤 + 金属喷涂). */
+export type HandleFinishCategory = 'anodize' | 'metalSpray';
 export type FillerType = 'glass' | 'leather' | 'woodVeneer' | 'quartzStone';
 
 export interface FrameOption {
@@ -62,8 +64,17 @@ export interface HandleOption {
   disabled: boolean;
 }
 
-export interface HandleColorOption {
-  color: string;
+export interface HandleFinishCategoryOption {
+  category: HandleFinishCategory;
+  label: string;
+  disabled: boolean;
+}
+
+/** Swatch row for handle finish (same tiles as Step 3, filtered). */
+export interface HandleFinishColorOption {
+  id: string;
+  sourceCategory: FinishCategory;
+  color: SurfaceColor;
   disabled: boolean;
 }
 
@@ -160,6 +171,10 @@ interface ConfiguratorState {
   // --- Step 5: Handle ---
   selectedHandleCode: string | null;
   selectedHandleColor: string | null;
+  /** Anodize vs metal spray (combined soft-touch + metallic pools). */
+  selectedHandleFinishCategory: HandleFinishCategory | null;
+  /** Same id shape as door finish: `category::code::name`. */
+  selectedHandleFinishSelectionId: string | null;
 
   // --- Step 6: Hinge ---
   selectedHingeColor: string | null;
@@ -195,6 +210,8 @@ interface ConfiguratorActions {
   selectFiller: (code: string | null) => void;
   selectHandle: (code: string | null) => void;
   selectHandleColor: (color: string | null) => void;
+  selectHandleFinishCategory: (category: HandleFinishCategory | null) => void;
+  selectHandleFinishColor: (selectionId: string | null) => void;
   setHandleMount: (bottomMm: number | null, lengthMm: number | null, cncFull: boolean) => void;
   selectHingeColor: (color: string | null) => void;
   selectHingeHardware: (hardwareCode: string | null) => void;
@@ -225,7 +242,8 @@ interface ConfiguratorSelectors {
   getValidationErrors: () => string[];
   getConfigurationSku: () => string | null;
   getGeneratedSku: () => string;
-  getHandleColorOptions: () => HandleColorOption[];
+  getHandleFinishCategoryOptions: () => HandleFinishCategoryOption[];
+  getHandleFinishColorOptions: () => HandleFinishColorOption[];
   getQuotationSnapshot: () => QuotationSnapshot;
   getCartTotal: () => { count: number; total: number | null };
 }
@@ -269,6 +287,8 @@ const initialState: ConfiguratorState = {
   baseMaterial: null,
   selectedHandleCode: null,
   selectedHandleColor: null,
+  selectedHandleFinishCategory: null,
+  selectedHandleFinishSelectionId: null,
   handleBottomMm: 960,
   handleLengthMm: 160,
   handleCncFullLength: false,
@@ -292,6 +312,8 @@ const clearFromFinish: Partial<ConfiguratorState> = {
   baseMaterial: null,
   selectedHandleCode: null,
   selectedHandleColor: null,
+  selectedHandleFinishCategory: null,
+  selectedHandleFinishSelectionId: null,
   handleBottomMm: 960,
   handleLengthMm: 160,
   handleCncFullLength: false,
@@ -532,6 +554,15 @@ function skuSanitize(part: string): string {
   return part.replace(/[^a-zA-Z0-9]/g, '').toUpperCase() || 'X';
 }
 
+/** Stored id: `finishCategory::excelCodeOrEmpty::colorName` (aligned with Step 3). */
+export function buildFinishColorId(
+  category: FinishCategory,
+  code: string | null,
+  name: string,
+): string {
+  return `${category}::${code ?? ''}::${name}`;
+}
+
 /** Stored id: `finishCategory::excelCodeOrEmpty::colorName` (see ConfiguratorPage.finishColorId). */
 function parseFinishColorSelectionId(id: string | null): {
   category: FinishCategory;
@@ -597,18 +628,6 @@ function effectiveHandleAllowedColorSet(handle: Handle, frame: Frame | null): Se
   return set;
 }
 
-function handleColorOptionRows(handle: Handle, frame: Frame | null): HandleColorOption[] {
-  const allowed = effectiveHandleAllowedColorSet(handle, frame);
-  const ordered: string[] = [...GLOBAL_HANDLE_COLOR_PALETTE];
-  for (const c of allowed) {
-    if (!ordered.includes(c)) ordered.push(c);
-  }
-  return ordered.map((color) => ({
-    color,
-    disabled: !allowed.has(color),
-  }));
-}
-
 /** Map surface finish name / code to a handle swatch token. */
 function colorTokenFromFinish(finishName: string, excelCode: string | null | undefined): string | null {
   const text = `${finishName} ${excelCode ?? ''}`.toLowerCase();
@@ -622,20 +641,109 @@ function colorTokenFromFinish(finishName: string, excelCode: string | null | und
   return null;
 }
 
-function computeHandleColorAfterUpdate(state: ConfiguratorState): string | null {
-  if (!state.selectedHandleCode) return null;
+function finishCategoryToHandleCategory(fc: FinishCategory): HandleFinishCategory {
+  return fc === 'anodize' ? 'anodize' : 'metalSpray';
+}
+
+function pickFirstHandleSwatch(
+  frame: Frame,
+  handle: Handle,
+  hc: HandleFinishCategory,
+): { id: string | null; token: string | null } {
+  const allowed = effectiveHandleAllowedColorSet(handle, frame);
+  const specificSet = frame.specificColors ? new Set(frame.specificColors) : null;
+  const pools: { cat: FinishCategory; colors: readonly SurfaceColor[] }[] =
+    hc === 'anodize'
+      ? [{ cat: 'anodize', colors: surfaceFinishes.anodize }]
+      : [
+          { cat: 'spraySoftTouch', colors: surfaceFinishes.spraySoftTouch },
+          { cat: 'sprayMetallic', colors: surfaceFinishes.sprayMetallic },
+        ];
+  for (const { cat, colors } of pools) {
+    for (const color of colors) {
+      if (specificSet !== null && color.code !== null && !specificSet.has(color.code)) continue;
+      const id = buildFinishColorId(cat, color.code, color.name);
+      const token = colorTokenFromFinish(color.name, color.code);
+      if (token && allowed.has(token)) return { id, token };
+    }
+  }
+  return { id: null, token: null };
+}
+
+/**
+ * Resolve handle finish UI + SKU token.
+ * `preferDoor`: when true (door finish changed), always align to door when possible.
+ */
+function resolveHandleFinishState(
+  state: ConfiguratorState,
+  opts: { preferDoor: boolean },
+): {
+  selectedHandleColor: string | null;
+  selectedHandleFinishCategory: HandleFinishCategory | null;
+  selectedHandleFinishSelectionId: string | null;
+} {
   const frame = findFrame(state.selectedFrameCode);
   const handle = handleList.find((h) => h.code === state.selectedHandleCode);
-  if (!frame?.matchedHandle || !handle) return null;
-  const allowed = effectiveHandleAllowedColorSet(handle, frame);
-  const parsed = parseFinishColorSelectionId(state.selectedFinishColorCode);
-  if (parsed) {
-    const token = colorTokenFromFinish(parsed.name, parsed.excelCode);
-    if (token && allowed.has(token)) return token;
+  if (!frame || !handle || !state.selectedHandleCode) {
+    return {
+      selectedHandleColor: null,
+      selectedHandleFinishCategory: null,
+      selectedHandleFinishSelectionId: null,
+    };
   }
-  const cur = state.selectedHandleColor?.toLowerCase() ?? '';
-  if (cur && allowed.has(cur)) return cur;
-  return null;
+  const allowed = effectiveHandleAllowedColorSet(handle, frame);
+
+  if (!opts.preferDoor && state.selectedHandleFinishSelectionId) {
+    const p = parseFinishColorSelectionId(state.selectedHandleFinishSelectionId);
+    if (p) {
+      const tok = colorTokenFromFinish(p.name, p.excelCode);
+      const hc: HandleFinishCategory =
+        p.category === 'anodize' ? 'anodize' : 'metalSpray';
+      if (tok && allowed.has(tok)) {
+        return {
+          selectedHandleColor: tok,
+          selectedHandleFinishCategory: state.selectedHandleFinishCategory ?? hc,
+          selectedHandleFinishSelectionId: state.selectedHandleFinishSelectionId,
+        };
+      }
+    }
+  }
+
+  if (state.selectedFinishCategory && state.selectedFinishColorCode) {
+    const dp = parseFinishColorSelectionId(state.selectedFinishColorCode);
+    if (dp) {
+      const hc = finishCategoryToHandleCategory(state.selectedFinishCategory);
+      const tok = colorTokenFromFinish(dp.name, dp.excelCode);
+      if (tok && allowed.has(tok)) {
+        return {
+          selectedHandleColor: tok,
+          selectedHandleFinishCategory: hc,
+          selectedHandleFinishSelectionId: state.selectedFinishColorCode,
+        };
+      }
+      const pick = pickFirstHandleSwatch(frame, handle, hc);
+      return {
+        selectedHandleColor: pick.token,
+        selectedHandleFinishCategory: hc,
+        selectedHandleFinishSelectionId: pick.id,
+      };
+    }
+  }
+
+  const pickA = pickFirstHandleSwatch(frame, handle, 'anodize');
+  if (pickA.token) {
+    return {
+      selectedHandleColor: pickA.token,
+      selectedHandleFinishCategory: 'anodize',
+      selectedHandleFinishSelectionId: pickA.id,
+    };
+  }
+  const pickM = pickFirstHandleSwatch(frame, handle, 'metalSpray');
+  return {
+    selectedHandleColor: pickM.token,
+    selectedHandleFinishCategory: 'metalSpray',
+    selectedHandleFinishSelectionId: pickM.id,
+  };
 }
 
 function findFillerByCode(code: string | null): { code: string; name: string } | null {
@@ -792,7 +900,8 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
       // =====================================================================
       selectFinishColor: (code) => {
         set((s) => {
-          const newHandleColor = computeHandleColorAfterUpdate({ ...s, selectedFinishColorCode: code });
+          const next = { ...s, selectedFinishColorCode: code };
+          const hf = resolveHandleFinishState(next, { preferDoor: true });
 
           // Auto-match hinge color to finish when possible
           let autoHingeColor = s.selectedHingeColor;
@@ -815,7 +924,9 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
           return {
             selectedFinishColorCode: code,
             configurationConfirmed: false,
-            selectedHandleColor: newHandleColor,
+            selectedHandleColor: hf.selectedHandleColor,
+            selectedHandleFinishCategory: hf.selectedHandleFinishCategory,
+            selectedHandleFinishSelectionId: hf.selectedHandleFinishSelectionId,
             selectedHingeColor: autoHingeColor,
           };
         }, undefined, 'selectFinishColor');
@@ -895,24 +1006,115 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
       selectHandle: (code) => {
         if (!code) {
           set(
-            { selectedHandleCode: null, selectedHandleColor: null, configurationConfirmed: false },
+            {
+              selectedHandleCode: null,
+              selectedHandleColor: null,
+              selectedHandleFinishCategory: null,
+              selectedHandleFinishSelectionId: null,
+              configurationConfirmed: false,
+            },
             undefined,
             'selectHandle/clear',
           );
           return;
         }
-        set((s) => ({
-          selectedHandleCode: code,
-          configurationConfirmed: false,
-          selectedHandleColor: computeHandleColorAfterUpdate({ ...s, selectedHandleCode: code }),
-        }), undefined, 'selectHandle');
+        set((s) => {
+          const next = { ...s, selectedHandleCode: code };
+          const hf = resolveHandleFinishState(next, { preferDoor: false });
+          return {
+            selectedHandleCode: code,
+            configurationConfirmed: false,
+            selectedHandleColor: hf.selectedHandleColor,
+            selectedHandleFinishCategory: hf.selectedHandleFinishCategory,
+            selectedHandleFinishSelectionId: hf.selectedHandleFinishSelectionId,
+          };
+        }, undefined, 'selectHandle');
       },
 
       // =====================================================================
-      // ACTION: selectHandleColor
+      // ACTION: selectHandleColor (legacy token; prefer selectHandleFinishColor)
       // =====================================================================
       selectHandleColor: (color) => {
         set({ selectedHandleColor: color, configurationConfirmed: false }, undefined, 'selectHandleColor');
+      },
+
+      selectHandleFinishCategory: (category) => {
+        set((s) => {
+          if (!category) {
+            return {
+              selectedHandleFinishCategory: null,
+              selectedHandleFinishSelectionId: null,
+              selectedHandleColor: null,
+              configurationConfirmed: false,
+            };
+          }
+          const frame = findFrame(s.selectedFrameCode);
+          const handle = handleList.find((h) => h.code === s.selectedHandleCode);
+          if (!frame || !handle) {
+            return { selectedHandleFinishCategory: category, configurationConfirmed: false };
+          }
+          const doorHc =
+            s.selectedFinishCategory && s.selectedFinishColorCode
+              ? finishCategoryToHandleCategory(s.selectedFinishCategory)
+              : null;
+          if (
+            doorHc === category &&
+            s.selectedFinishColorCode &&
+            s.selectedFinishCategory
+          ) {
+            const dp = parseFinishColorSelectionId(s.selectedFinishColorCode);
+            if (dp) {
+              const tok = colorTokenFromFinish(dp.name, dp.excelCode);
+              const allowed = effectiveHandleAllowedColorSet(handle, frame);
+              if (tok && allowed.has(tok)) {
+                return {
+                  selectedHandleFinishCategory: category,
+                  selectedHandleFinishSelectionId: s.selectedFinishColorCode,
+                  selectedHandleColor: tok,
+                  configurationConfirmed: false,
+                };
+              }
+            }
+          }
+          const pick = pickFirstHandleSwatch(frame, handle, category);
+          return {
+            selectedHandleFinishCategory: category,
+            selectedHandleFinishSelectionId: pick.id,
+            selectedHandleColor: pick.token,
+            configurationConfirmed: false,
+          };
+        }, undefined, 'selectHandleFinishCategory');
+      },
+
+      selectHandleFinishColor: (selectionId) => {
+        set((s) => {
+          if (!selectionId) {
+            return {
+              selectedHandleFinishSelectionId: null,
+              selectedHandleColor: null,
+              configurationConfirmed: false,
+            };
+          }
+          const frame = findFrame(s.selectedFrameCode);
+          const handle = handleList.find((h) => h.code === s.selectedHandleCode);
+          const p = parseFinishColorSelectionId(selectionId);
+          if (!frame || !handle || !p) {
+            return { configurationConfirmed: false };
+          }
+          const tok = colorTokenFromFinish(p.name, p.excelCode);
+          const allowed = effectiveHandleAllowedColorSet(handle, frame);
+          if (!tok || !allowed.has(tok)) {
+            return { configurationConfirmed: false };
+          }
+          const hc: HandleFinishCategory =
+            p.category === 'anodize' ? 'anodize' : 'metalSpray';
+          return {
+            selectedHandleFinishSelectionId: selectionId,
+            selectedHandleColor: tok,
+            selectedHandleFinishCategory: hc,
+            configurationConfirmed: false,
+          };
+        }, undefined, 'selectHandleFinishColor');
       },
 
       setHandleMount: (bottomMm, lengthMm, cncFull) => {
@@ -1420,7 +1622,10 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
           if (s.selectedHandleCode) {
             const h = handleList.find((x) => x.code === s.selectedHandleCode);
             const allowed = h ? effectiveHandleAllowedColorSet(h, frame) : new Set<string>();
-            if (allowed.size > 0 && !s.selectedHandleColor) {
+            if (
+              allowed.size > 0 &&
+              (!s.selectedHandleFinishSelectionId || !s.selectedHandleColor)
+            ) {
               errors.push(V.selectHandleColor);
             }
           }
@@ -1568,13 +1773,67 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
       },
 
       // =====================================================================
-      // SELECTOR: getHandleColorOptions
+      // SELECTOR: getHandleFinishCategoryOptions (anodize vs metal spray only)
       // =====================================================================
-      getHandleColorOptions: (): HandleColorOption[] => {
+      getHandleFinishCategoryOptions: (): HandleFinishCategoryOption[] => {
         const frame = findFrame(get().selectedFrameCode);
+        const L = msg(get().uiLocale);
+        if (!frame) {
+          return [
+            { category: 'anodize', label: L.handleFinish.anodize, disabled: true },
+            { category: 'metalSpray', label: L.handleFinish.metalSpray, disabled: true },
+          ];
+        }
+        const an = frame.allowedFinishing.includes('anodize');
+        const ms =
+          frame.allowedFinishing.includes('spraySoftTouch') ||
+          frame.allowedFinishing.includes('sprayMetallic');
+        return [
+          { category: 'anodize', label: L.handleFinish.anodize, disabled: !an },
+          { category: 'metalSpray', label: L.handleFinish.metalSpray, disabled: !ms },
+        ];
+      },
+
+      // =====================================================================
+      // SELECTOR: getHandleFinishColorOptions (swatches for selected handle category)
+      // =====================================================================
+      getHandleFinishColorOptions: (): HandleFinishColorOption[] => {
+        const { selectedHandleFinishCategory, selectedFinishCategory, selectedFrameCode } = get();
+        const frame = findFrame(selectedFrameCode);
         const handle = handleList.find((h) => h.code === get().selectedHandleCode);
         if (!frame || !handle || !frameUsesHandleColorStep(frame)) return [];
-        return handleColorOptionRows(handle, frame);
+
+        let hc = selectedHandleFinishCategory;
+        if (!hc && selectedFinishCategory) {
+          hc = finishCategoryToHandleCategory(selectedFinishCategory);
+        }
+        if (!hc) return [];
+
+        const specificSet = frame.specificColors ? new Set(frame.specificColors) : null;
+        const out: HandleFinishColorOption[] = [];
+
+        const pushPool = (cat: FinishCategory, colors: readonly SurfaceColor[]) => {
+          for (const color of colors) {
+            const disabled =
+              specificSet !== null && color.code !== null
+                ? !specificSet.has(color.code)
+                : false;
+            out.push({
+              id: buildFinishColorId(cat, color.code, color.name),
+              sourceCategory: cat,
+              color,
+              disabled,
+            });
+          }
+        };
+
+        if (hc === 'anodize') {
+          pushPool('anodize', surfaceFinishes.anodize);
+        } else {
+          pushPool('spraySoftTouch', surfaceFinishes.spraySoftTouch);
+          pushPool('sprayMetallic', surfaceFinishes.sprayMetallic);
+        }
+        return out;
       },
 
       // =====================================================================

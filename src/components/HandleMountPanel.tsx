@@ -2,11 +2,14 @@ import type { CSSProperties } from 'react';
 import type { Frame } from '../data';
 import { msg } from '../translations';
 import { MediaThumb } from './MediaThumb';
+import { HandlePositionSchematic } from './HandlePositionSchematic';
 
 type CatalogMsg = ReturnType<typeof msg>;
 
 export function HandleMountPanel({
   frame,
+  widthMm,
+  heightMm,
   bottomMm,
   lengthMm,
   cncFull,
@@ -14,6 +17,8 @@ export function HandleMountPanel({
   t,
 }: {
   frame: Frame;
+  widthMm: number | null;
+  heightMm: number | null;
   bottomMm: number | null;
   lengthMm: number | null;
   cncFull: boolean;
@@ -42,18 +47,52 @@ export function HandleMountPanel({
         ? t.stepHandleMountHintCnc
         : t.stepHandleMountHintFixed;
 
+  const thumbWrap: CSSProperties = {
+    width: '100%',
+    maxWidth: 220,
+    marginBottom: 8,
+  };
+
   return (
     <div
       style={{
         marginTop: 20,
         display: 'grid',
         gap: 20,
-        gridTemplateColumns: 'minmax(200px, 1fr) minmax(220px, 300px)',
+        gridTemplateColumns: 'minmax(180px, 1fr) minmax(220px, 300px)',
         alignItems: 'start',
       }}
     >
       <div>
-        <MediaThumb picture={pic} alt="handle diagram" />
+        {pic ? (
+          <div style={thumbWrap}>
+            <p
+              style={{
+                margin: '0 0 6px',
+                fontSize: 12,
+                fontWeight: 600,
+                color: 'var(--text-secondary)',
+              }}
+            >
+              {t.handleReferencePhoto}
+            </p>
+            <MediaThumb
+              picture={pic}
+              alt="handle reference"
+              style={{ maxWidth: 220, maxHeight: 150, aspectRatio: '4 / 3' }}
+            />
+          </div>
+        ) : null}
+        <HandlePositionSchematic
+          widthMm={widthMm}
+          heightMm={heightMm}
+          bottomMm={bottomMm}
+          lengthMm={lengthMm}
+          fullLength={cncFull}
+          separateLengthMm={160}
+          workflow={wf}
+          labels={{ door: t.handleSchematicDoor, handle: t.handleSchematicHandle }}
+        />
         <p
           style={{
             marginTop: 10,

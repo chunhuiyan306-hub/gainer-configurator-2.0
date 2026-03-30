@@ -1,6 +1,11 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import type { Frame } from './data';
-import { useConfiguratorStore, type FinishCategory, type FrameOption } from './useConfiguratorStore';
+import {
+  useConfiguratorStore,
+  buildFinishColorId,
+  type FinishCategory,
+  type FrameOption,
+} from './useConfiguratorStore';
 import { HandleMountPanel } from './components/HandleMountPanel';
 import { StepSection } from './components/StepSection';
 import { SelectableTile } from './components/SelectableTile';
@@ -13,7 +18,7 @@ import { msg, type UiLocale } from './translations';
 type UiMessages = ReturnType<typeof msg>;
 
 function finishColorId(category: FinishCategory, code: string | null, name: string) {
-  return `${category}::${code ?? ''}::${name}`;
+  return buildFinishColorId(category, code, name);
 }
 
 function parseFinishColorId(id: string): { category: FinishCategory; code: string | null; name: string } {
@@ -57,6 +62,8 @@ export function ConfiguratorPage() {
   const baseMaterial = useConfiguratorStore((s) => s.baseMaterial);
   const selectedHandleCode = useConfiguratorStore((s) => s.selectedHandleCode);
   const selectedHandleColor = useConfiguratorStore((s) => s.selectedHandleColor);
+  const selectedHandleFinishCategory = useConfiguratorStore((s) => s.selectedHandleFinishCategory);
+  const selectedHandleFinishSelectionId = useConfiguratorStore((s) => s.selectedHandleFinishSelectionId);
   const handleBottomMm = useConfiguratorStore((s) => s.handleBottomMm);
   const handleLengthMm = useConfiguratorStore((s) => s.handleLengthMm);
   const handleCncFullLength = useConfiguratorStore((s) => s.handleCncFullLength);
@@ -72,7 +79,8 @@ export function ConfiguratorPage() {
   const selectFillerType = useConfiguratorStore((s) => s.selectFillerType);
   const selectFiller = useConfiguratorStore((s) => s.selectFiller);
   const selectHandle = useConfiguratorStore((s) => s.selectHandle);
-  const selectHandleColor = useConfiguratorStore((s) => s.selectHandleColor);
+  const selectHandleFinishCategory = useConfiguratorStore((s) => s.selectHandleFinishCategory);
+  const selectHandleFinishColor = useConfiguratorStore((s) => s.selectHandleFinishColor);
   const setHandleMount = useConfiguratorStore((s) => s.setHandleMount);
   const selectHingeColor = useConfiguratorStore((s) => s.selectHingeColor);
   const selectHingeHardware = useConfiguratorStore((s) => s.selectHingeHardware);
@@ -87,7 +95,8 @@ export function ConfiguratorPage() {
   const getHandleOptions = useConfiguratorStore((s) => s.getHandleOptions);
   const getHingeCalculation = useConfiguratorStore((s) => s.getHingeCalculation);
   const getSelectedFrame = useConfiguratorStore((s) => s.getSelectedFrame);
-  const getHandleColorOptions = useConfiguratorStore((s) => s.getHandleColorOptions);
+  const getHandleFinishCategoryOptions = useConfiguratorStore((s) => s.getHandleFinishCategoryOptions);
+  const getHandleFinishColorOptions = useConfiguratorStore((s) => s.getHandleFinishColorOptions);
   const getValidationErrors = useConfiguratorStore((s) => s.getValidationErrors);
 
   const [confirmHint, setConfirmHint] = useState<string | null>(null);
@@ -99,7 +108,8 @@ export function ConfiguratorPage() {
   const fillerTypes = getFillerTypeOptions();
   const fillerOptions = getFillerOptions();
   const handleOptions = getHandleOptions();
-  const handleColorOptions = getHandleColorOptions();
+  const handleFinishCategories = getHandleFinishCategoryOptions();
+  const handleFinishColors = getHandleFinishColorOptions();
   const hingeCalc = getHingeCalculation();
   const frame = getSelectedFrame();
 
@@ -529,28 +539,74 @@ export function ConfiguratorPage() {
               <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--text-secondary)' }}>
                 {t.handleColorHint}
               </p>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-                {handleColorOptions.map(({ color, disabled }) => {
-                  const key = color.toLowerCase();
-                  const selected = selectedHandleColor?.toLowerCase() === key;
+              <p style={{ margin: '0 0 10px', fontSize: 14, color: 'var(--text-secondary)' }}>
+                {t.handleFinishCategoryLabel}
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 20 }}>
+                {handleFinishCategories.map(({ category, label, disabled }) => {
+                  const selected = selectedHandleFinishCategory === category;
                   return (
                     <PillButton
-                      key={color}
+                      key={category}
                       selected={selected}
                       disabled={disabled}
                       disabledTitle={t.disabledMismatch}
-                      onClick={() => selectHandleColor(color)}
+                      onClick={() => selectHandleFinishCategory(category)}
                     >
-                      {color.charAt(0).toUpperCase() + color.slice(1)}
+                      {label}
                     </PillButton>
                   );
                 })}
               </div>
+              {handleFinishColors.length > 0 ? (
+                <>
+                  <p style={{ margin: '0 0 12px', fontSize: 14, color: 'var(--text-secondary)' }}>
+                    {t.handleFinishColorLabel}
+                  </p>
+                  <div style={gridStyle}>
+                    {handleFinishColors.map(({ id, color, disabled }) => {
+                      const selected = selectedHandleFinishSelectionId === id;
+                      return (
+                        <SelectableTile
+                          key={id}
+                          selected={selected}
+                          disabled={disabled}
+                          onClick={() => selectHandleFinishColor(id)}
+                        >
+                          <MediaThumb picture={color.picture} alt={color.name} disabled={disabled} />
+                          <div style={{ padding: '12px 14px 14px' }}>
+                            <div style={{ fontWeight: 600, fontSize: 13, lineHeight: 1.35 }}>
+                              {color.name.replace(/\n/g, ' ')}
+                            </div>
+                            {color.code ? (
+                              <div
+                                style={{
+                                  marginTop: 4,
+                                  fontSize: 12,
+                                  color: 'var(--text-secondary)',
+                                }}
+                              >
+                                {color.code}
+                              </div>
+                            ) : null}
+                          </div>
+                        </SelectableTile>
+                      );
+                    })}
+                  </div>
+                </>
+              ) : (
+                <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
+                  {t.pickHandleFinishCategoryFirst}
+                </p>
+              )}
             </>
           ) : null}
           {showHandleMountPanel && frame ? (
             <HandleMountPanel
               frame={frame}
+              widthMm={width}
+              heightMm={height}
               bottomMm={handleBottomMm}
               lengthMm={handleLengthMm}
               cncFull={handleCncFullLength}
