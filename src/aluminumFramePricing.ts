@@ -89,25 +89,26 @@ export function isOffSheetCustomGlass(code: string): boolean {
  * Per-frame sqm row: indices 0–10 = glass columns; index 11 = leather column (ignored for glass).
  * `null` means "/" on the sheet (not available for that frame + column).
  */
+/** Synced from Desktop `price.xlsx` sheet "aluminum frame price" (latest user export). */
 export const ALUMINUM_FRAME_GLASS_MATRIX: Readonly<Record<string, readonly (number | null)[]>> = {
-  GM004: [660, 680, 688, 715, 765, 780, 765, 850, 850, 850, 880, null],
-  GM090: [380, 390, 400, 450, null, null, null, null, null, null, null, null],
-  GM023: [480, 500, 505, 550, 630, 650, 630, 680, 680, 680, 730, null],
-  MK118: [580, 600, 605, null, null, null, null, null, null, null, null, null],
-  MK336: [850, null, null, null, null, null, null, null, null, null, null, null],
-  GM054: [580, 600, 620, 660, 750, 780, 750, 800, 800, 800, null, null],
-  MK162: [580, 600, 620, 660, 750, 780, 750, 800, 800, 800, null, null],
-  GM106: [580, 600, 620, 660, 750, 780, 750, 800, 800, 800, 730, null],
-  MK169: [580, 600, 605, null, null, null, null, null, null, null, null, null],
-  MK073: [580, 600, 620, 660, 750, 780, 750, 800, 800, 800, null, null],
-  GM073: [780, 800, 820, null, null, null, null, 980, 980, 980, null, null],
-  GM074: [980, null, null, null, null, null, null, null, null, null, null, 1280],
-  GM097: [980, null, null, null, null, null, null, null, null, null, null, 1280],
-  GM072: [680, 700, 720, 755, 780, 780, 780, 880, 880, 880, 915, null],
-  MK304: [680, 700, 720, 755, 780, 780, 780, 880, 880, 880, 915, null],
-  GM060: [580, 600, 620, 660, 750, 780, 750, 800, 800, 800, null, null],
-  GM043: [580, 600, 620, 660, 750, 780, 750, 800, 800, 800, null, null],
-  GM094: [380, 390, 400, 450, null, null, null, null, null, null, null, null],
+  GM004: [700, 700, 708, 735, 785, 800, 785, 870, 870, 870, 900, null],
+  GM090: [400, 410, 420, 470, null, null, null, null, null, null, null, null],
+  GM023: [500, 520, 525, 570, 650, 670, 650, 700, 700, 700, 750, null],
+  MK118: [600, 620, 625, null, null, null, null, null, null, null, null, null],
+  MK336: [870, null, null, null, null, null, null, null, null, null, null, null],
+  GM054: [600, 620, 640, 680, 770, 800, 770, 820, 820, 820, null, null],
+  MK162: [600, 620, 640, 680, 770, 800, 770, 820, 820, 820, null, null],
+  GM106: [600, 620, 640, 680, 770, 800, 770, 820, 820, 820, 750, null],
+  MK169: [600, 620, 625, null, null, null, null, null, null, null, null, null],
+  MK073: [600, 620, 640, 680, 770, 800, 770, 820, 820, 820, null, null],
+  GM073: [800, 820, 840, null, null, null, null, 1000, 1000, 1000, null, null],
+  GM074: [1000, null, null, null, null, null, null, null, null, null, null, 1280],
+  GM097: [1000, null, null, null, null, null, null, null, null, null, null, 1280],
+  GM072: [700, 720, 740, 775, 800, 800, 800, 900, 900, 900, 935, null],
+  MK304: [700, 720, 740, 775, 800, 800, 800, 900, 900, 900, 935, null],
+  GM060: [600, 620, 640, 680, 770, 800, 770, 820, 820, 820, null, null],
+  GM043: [600, 620, 640, 680, 770, 800, 770, 820, 820, 820, null, null],
+  GM094: [400, 410, 420, 470, null, null, null, null, null, null, null, null],
 };
 
 export function frameHasAluminumPriceMatrix(frameCode: string): boolean {

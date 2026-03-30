@@ -2059,7 +2059,7 @@ export const hardwareList = [
     code: 'HG-RYF2',
     name: 'RY-ZSJL-F2 Pin Hinge (Metal Cover)',
     allowedColors: ['black', 'grey', 'gold'],
-    pricePerPiece: 220,
+    pricePerPiece: 240,
     picture: '/assets/catalog/hardware/HG-RYF2.png',
   },
 {
