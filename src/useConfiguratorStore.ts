@@ -557,6 +557,30 @@ function resolvePickedHingeHardware(
   return list[0] ?? null;
 }
 
+/** Blum cup + Sensys — hinge finish is silver only in the configurator. */
+function isBlumFamilyHinge(hw: Hardware | null): boolean {
+  if (!hw?.code) return false;
+  const c = String(hw.code).toUpperCase().replace(/\s+/g, '');
+  return c === 'HG-BLUM' || c === 'HG-SEN';
+}
+
+function baseFrameHingeColors(frame: Frame): string[] {
+  if (frame.hardwareColors.length > 0) return [...frame.hardwareColors];
+  if (frame.matchedHardware) return ['black', 'gray', 'gold'];
+  return [];
+}
+
+/** Hinge color pills + validation: Blum/Sensys rows are silver-only. */
+function hingeColorsForEffectiveHardware(
+  frame: Frame,
+  effectiveHw: Hardware | null,
+  matchedCount: number,
+): string[] {
+  if (matchedCount <= 0) return [];
+  if (isBlumFamilyHinge(effectiveHw)) return ['silver'];
+  return baseFrameHingeColors(frame);
+}
+
 function skuSanitize(part: string): string {
   return part.replace(/[^a-zA-Z0-9]/g, '').toUpperCase() || 'X';
 }
@@ -855,14 +879,11 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
           }
         }
 
-        // Auto-select the first hinge color
-        const hingeColors =
-          frame.hardwareColors.length > 0
-            ? [...frame.hardwareColors]
-            : frame.matchedHardware ? ['black', 'gray', 'gold'] : [];
+        const mhList = findMatchedHardware(frame);
+        const effHw = mhList[0] ?? null;
+        const hingeColors = hingeColorsForEffectiveHardware(frame, effHw, mhList.length);
         const autoHingeColor = hingeColors.length > 0 ? hingeColors[0] : null;
 
-        const mhList = findMatchedHardware(frame);
         const autoHingeHw =
           mhList[0]?.code != null ? String(mhList[0].code) : null;
 
@@ -916,10 +937,14 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
             const parsed = parseFinishColorSelectionId(code);
             if (parsed) {
               const frame = findFrame(s.selectedFrameCode);
+              const mhList = frame ? findMatchedHardware(frame) : [];
+              const eff = resolvePickedHingeHardware(frame, s.selectedHingeHardwareCode);
               const hingeColors =
-                frame?.hardwareColors?.length
-                  ? frame.hardwareColors.map((c) => String(c).toLowerCase().trim())
-                  : frame?.matchedHardware ? ['black', 'gray', 'gold'] : [];
+                frame && mhList.length > 0
+                  ? hingeColorsForEffectiveHardware(frame, eff, mhList.length).map((c) =>
+                      String(c).toLowerCase().trim(),
+                    )
+                  : [];
               const token = colorTokenFromFinish(parsed.name, parsed.excelCode);
               if (token) {
                 const match = hingeColors.find((c) => c === token);
@@ -1145,11 +1170,27 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
       },
 
       selectHingeHardware: (hardwareCode) => {
-        set(
-          { selectedHingeHardwareCode: hardwareCode, configurationConfirmed: false },
-          undefined,
-          'selectHingeHardware',
-        );
+        set((s) => {
+          const frame = findFrame(s.selectedFrameCode);
+          const list = frame ? findMatchedHardware(frame) : [];
+          const eff = resolvePickedHingeHardware(frame, hardwareCode);
+          const colors =
+            frame && list.length > 0
+              ? hingeColorsForEffectiveHardware(frame, eff, list.length)
+              : [];
+          const allowed = new Set(colors.map((c) => c.toLowerCase()));
+          let nextColor = s.selectedHingeColor;
+          if (colors.length > 0) {
+            if (!nextColor || !allowed.has(String(nextColor).toLowerCase())) {
+              nextColor = colors[0] ?? null;
+            }
+          }
+          return {
+            selectedHingeHardwareCode: hardwareCode,
+            selectedHingeColor: nextColor,
+            configurationConfirmed: false,
+          };
+        }, undefined, 'selectHingeHardware');
       },
 
       // =====================================================================
@@ -1413,9 +1454,7 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
 
         const availableColors =
           frame && matched.length > 0
-            ? frame.hardwareColors.length > 0
-              ? [...frame.hardwareColors]
-              : ['black', 'gray', 'gold']
+            ? hingeColorsForEffectiveHardware(frame, effectiveHardware, matched.length)
             : [];
 
         if (!frame) {
@@ -1664,10 +1703,13 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
           frame?.matchedHardware &&
           hingeCalc.matchedHardware.length > 0 &&
           !hingeCalc.usePivot &&
-          hingeCalc.availableColors.length > 0 &&
-          !s.selectedHingeColor
+          hingeCalc.availableColors.length > 0
         ) {
-          errors.push(V.selectHingeColor);
+          const cur = s.selectedHingeColor?.toLowerCase();
+          const ok =
+            cur != null &&
+            hingeCalc.availableColors.some((c) => c.toLowerCase() === cur);
+          if (!ok) errors.push(V.selectHingeColor);
         }
         return errors;
       },
