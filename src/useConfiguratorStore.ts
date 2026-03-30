@@ -20,6 +20,13 @@ import {
 } from './data';
 import { msg, readStoredLocale, writeStoredLocale, type UiLocale } from './translations';
 
+/** Coerce stored mm fields to finite numbers (guards against string/NaN from edge cases). */
+function finiteNullableMm(v: number | null | undefined): number | null {
+  if (v == null) return null;
+  const n = typeof v === 'number' ? v : Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
 // =============================================================================
 // Type Definitions
 // =============================================================================
@@ -1120,8 +1127,8 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
       setHandleMount: (bottomMm, lengthMm, cncFull) => {
         set(
           {
-            handleBottomMm: bottomMm,
-            handleLengthMm: lengthMm,
+            handleBottomMm: finiteNullableMm(bottomMm),
+            handleLengthMm: finiteNullableMm(lengthMm),
             handleCncFullLength: cncFull,
             configurationConfirmed: false,
           },
@@ -1632,8 +1639,8 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
         }
 
         if (frame && frameShowsHandleMountPanel(frame)) {
-          const h = s.height;
-          const b = s.handleBottomMm;
+          const h = finiteNullableMm(s.height);
+          const b = finiteNullableMm(s.handleBottomMm);
           if (h == null || b == null) {
             errors.push(V.handleMountFill);
           } else {
@@ -1644,7 +1651,7 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
               if (b < 50) errors.push(V.handleMountBottomMin50);
             }
             if (frame.handleWorkflow === 'cnc' && !s.handleCncFullLength) {
-              const len = s.handleLengthMm;
+              const len = finiteNullableMm(s.handleLengthMm);
               if (len == null || len < 50) errors.push(V.handleMountLength);
             }
           }

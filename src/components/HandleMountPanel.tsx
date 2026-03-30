@@ -6,6 +6,12 @@ import { HandlePositionSchematic } from './HandlePositionSchematic';
 
 type CatalogMsg = ReturnType<typeof msg>;
 
+function finiteMm(v: number | null | undefined): number | null {
+  if (v == null) return null;
+  const n = typeof v === 'number' ? v : Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
 export function HandleMountPanel({
   frame,
   widthMm,
@@ -29,8 +35,22 @@ export function HandleMountPanel({
   const pic = frame.handleDiagramPicture;
   const showLen = wf === 'cnc';
   const minBottomMm = wf === 'separate' ? 120 : 50;
-  const bottomInvalid =
-    bottomMm != null && Number.isFinite(bottomMm) && bottomMm < minBottomMm;
+  const bottomVal = finiteMm(bottomMm);
+  const heightVal = finiteMm(heightMm);
+  const bottomTooLow = bottomVal != null && bottomVal < minBottomMm;
+  const topClearInvalid =
+    wf === 'separate' &&
+    bottomVal != null &&
+    heightVal != null &&
+    heightVal - bottomVal < 120;
+  const bottomInvalid = bottomTooLow || topClearInvalid;
+  const bottomErrorText = bottomInvalid
+    ? topClearInvalid && !bottomTooLow
+      ? t.validation.handleMountTopClearance
+      : wf === 'separate'
+        ? t.validation.handleMountBottomMinSeparate
+        : t.validation.handleMountBottomMin50
+    : null;
 
   const inputStyle: CSSProperties = {
     width: '100%',
@@ -134,7 +154,7 @@ export function HandleMountPanel({
               : {}),
           }}
         />
-        {bottomInvalid ? (
+        {bottomErrorText ? (
           <p
             role="alert"
             style={{
@@ -144,9 +164,7 @@ export function HandleMountPanel({
               lineHeight: 1.4,
             }}
           >
-            {wf === 'separate'
-              ? t.validation.handleMountBottomMinSeparate
-              : t.validation.handleMountBottomMin50}
+            {bottomErrorText}
           </p>
         ) : null}
 
