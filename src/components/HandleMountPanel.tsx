@@ -28,6 +28,9 @@ export function HandleMountPanel({
   const wf = frame.handleWorkflow;
   const pic = frame.handleDiagramPicture;
   const showLen = wf === 'cnc';
+  const minBottomMm = wf === 'separate' ? 120 : 50;
+  const bottomInvalid =
+    bottomMm != null && Number.isFinite(bottomMm) && bottomMm < minBottomMm;
 
   const inputStyle: CSSProperties = {
     width: '100%',
@@ -113,14 +116,39 @@ export function HandleMountPanel({
         </label>
         <input
           type="number"
-          min={wf === 'separate' ? 120 : 50}
+          min={minBottomMm}
           value={bottomMm ?? ''}
           onChange={(e) => {
             const v = e.target.value;
             onChange(v === '' ? null : Number(v), lengthMm, cncFull);
           }}
-          style={inputStyle}
+          aria-invalid={bottomInvalid}
+          style={{
+            ...inputStyle,
+            ...(bottomInvalid
+              ? {
+                  borderColor: '#c62828',
+                  outline: '1px solid #ffcdd2',
+                  background: '#fff8f8',
+                }
+              : {}),
+          }}
         />
+        {bottomInvalid ? (
+          <p
+            role="alert"
+            style={{
+              margin: '6px 0 0',
+              fontSize: 12,
+              color: '#c62828',
+              lineHeight: 1.4,
+            }}
+          >
+            {wf === 'separate'
+              ? t.validation.handleMountBottomMinSeparate
+              : t.validation.handleMountBottomMin50}
+          </p>
+        ) : null}
 
         {showLen ? (
           <>
