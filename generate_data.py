@@ -15,6 +15,11 @@ paste images into the sheet or add files under public/assets/catalog/cabinet-doo
 
 Override path: set env GAINER_EXCEL to the .xlsx file.
 
+PET swatches (sheet \"PET\" in DOOR Information——Gainer.xlsx: A=color, B=picture, C=code):
+  run `python extract_pet_catalog.py` to write `public/assets/catalog/pet/QZ*.png`.
+  When `generate_data.py` runs, it also merges PET rows from that workbook if found
+  (same paths as extract script). The main 318 workbook does not need a PET sheet.
+
 After changing embedded pictures in Excel, run `python generate_data.py` and deploy so
 `src/data.ts` and `public/assets/catalog/cabinet-door/` stay in sync (otherwise the
 site can show old thumbnails or missing Side view / Profile buttons).
@@ -49,8 +54,34 @@ def _resolve_xlsx() -> Path:
             return p
     raise FileNotFoundError(
         "Place '318 door information(3).xlsx' next to generate_data.py, your Desktop, "
-        "or set GAINER_EXCEL to the full path."
+        "or set GAINER_EXCEL to the full path. "
+        "(PET swatches: run extract_pet_catalog.py if you use DOOR Information——Gainer.xlsx only.)"
     )
+
+
+def _resolve_gainer_supplement_xlsx() -> Path | None:
+    """
+    Optional workbook with PET sheet (A=color, B=picture, C=code, D=surface).
+    Typical filename: DOOR Information——Gainer.xlsx on Desktop or next to this script.
+    """
+    here = Path(__file__).resolve().parent
+    desk = Path.home() / "Desktop"
+    candidates = [
+        here / "DOOR Information——Gainer.xlsx",
+        desk / "DOOR Information——Gainer.xlsx",
+        here / "DOOR Information - Gainer.xlsx",
+        desk / "DOOR Information - Gainer.xlsx",
+    ]
+    for p in candidates:
+        if p.is_file():
+            return p
+    for folder in (here, desk):
+        if not folder.is_dir():
+            continue
+        for p in sorted(folder.glob("DOOR*Gainer*.xlsx")):
+            if p.is_file():
+                return p
+    return None
 
 
 XLSX_PATH = _resolve_xlsx()
@@ -331,6 +362,68 @@ def _sheet_rows(name: str):
 
 print(f"Loading: {XLSX_PATH}")
 CATALOG_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _build_pet_colors_from_gainer_workbook() -> list:
+    """
+    Read sheet 'PET' from DOOR Information——Gainer.xlsx (or *Gainer*.xlsx): A=color, B=picture, C=code.
+    Saves embedded images to public/assets/catalog/pet/{Code}.ext.
+    """
+    default = [
+        {"code": "QZ01", "name": "White Oak", "picture": "/assets/catalog/pet/QZ01.png"},
+        {"code": "QZ02", "name": "walnut", "picture": "/assets/catalog/pet/QZ02.png"},
+        {"code": "QZ03", "name": "Black Oak", "picture": "/assets/catalog/pet/QZ03.png"},
+    ]
+    path = _resolve_gainer_supplement_xlsx()
+    if not path:
+        try:
+            rb = openpyxl.load_workbook(str(XLSX_PATH), read_only=True, data_only=True)
+            has_pet = "PET" in rb.sheetnames
+            rb.close()
+            if has_pet:
+                path = XLSX_PATH
+        except Exception:
+            path = None
+    if not path:
+        print("PET: no workbook with sheet 'PET' found — using default PET catalog paths.")
+        return default
+    try:
+        wb_pet = openpyxl.load_workbook(str(path), data_only=False)
+    except Exception as e:
+        print(f"PET: could not open {path}: {e} — using defaults.")
+        return default
+    if "PET" not in wb_pet.sheetnames:
+        print("PET: no 'PET' sheet — using defaults.")
+        wb_pet.close()
+        return default
+    ws = wb_pet["PET"]
+    out = []
+    for r in range(2, ws.max_row + 1):
+        name_cell = ws.cell(r, 1).value
+        code_cell = ws.cell(r, 3).value
+        if code_cell is None or str(code_cell).strip() in ("", "\\"):
+            continue
+        code = str(code_cell).strip()
+        nm = str(name_cell).replace("\n", " ").strip() if name_cell else code
+        im = _image_at_row_col(ws, r, 2)
+        if not im:
+            im = _best_image_for_row(ws, r, [2])
+        url = None
+        if im:
+            url = _try_save_catalog_image(im, "pet", code)
+        if not url:
+            url = _existing_catalog_url("pet", code)
+        if not url:
+            print(f"PET: row {r} code {code} — no picture saved, skipped.")
+            continue
+        out.append({"code": code, "name": nm, "picture": url})
+    wb_pet.close()
+    if not out:
+        print("PET: no rows exported — using defaults.")
+        return default
+    print(f"PET: loaded {len(out)} swatches from {path.name}")
+    return out
+
 
 _ws_glass = _worksheet(wb, "glass")
 _ws_leather = _worksheet(wb, "leather")
@@ -1250,12 +1343,8 @@ for row in raw["Sprayed Metallic Color"][1:]:
         "picture": _surface_pic(metal_pics, code, nm),
     })
 
-# PET wood-grain film — not from door Excel; synced with price / product sheet (QZ01–QZ03).
-pet_colors = [
-    {"code": "QZ01", "name": "White Oak", "picture": "/assets/catalog/pet/QZ01.png"},
-    {"code": "QZ02", "name": "Walnut", "picture": "/assets/catalog/pet/QZ02.png"},
-    {"code": "QZ03", "name": "Black Oak", "picture": "/assets/catalog/pet/QZ03.png"},
-]
+# PET: from supplement workbook `DOOR Information——Gainer.xlsx` sheet "PET" (see _build_pet_colors_from_gainer_workbook).
+pet_colors = _build_pet_colors_from_gainer_workbook()
 
 # ---------------------------------------------------------------------------
 # 7. HARDWARE

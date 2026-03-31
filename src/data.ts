@@ -2021,7 +2021,7 @@ export const surfaceFinishes = {
     },
     {
       code: 'QZ02',
-      name: 'Walnut',
+      name: 'walnut',
       picture: '/assets/catalog/pet/QZ02.png',
     },
     {
