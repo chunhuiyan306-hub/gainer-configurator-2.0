@@ -2207,6 +2207,16 @@ export function getHardwareByCode(code: string | null | undefined): Hardware | n
 // 8. Handles
 // ---------------------------------------------------------------------------
 
+/** 独立拉手：仅允许 GM004 / MK118 / GM097 三条线对应的目录款（共 6 个 SKU）。 */
+export const SEPARATE_PULL_CATALOG_CODES: readonly string[] = [
+  'GM047-3',
+  'GM047-4',
+  'GM047-5',
+  'FLH001',
+  'FLH002',
+  'FLH003',
+];
+
 export const handleList = [
 {
     code: 'CNC',

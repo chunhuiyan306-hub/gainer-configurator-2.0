@@ -56,14 +56,15 @@ const M = {
     stepHandleSubtitleNone: '当前门框无需选择拉手。',
     stepHandleSkip: '此步骤可跳过。',
     stepHandleSubtitleSeparate: '分体拉手：从下方选项中选择款式，再确认安装位置与尺寸。',
-    stepHandleSubtitleCnc: '铣型拉手：确认款式后填写安装位置与拉手长度（可通长）。',
-    stepHandleSubtitleFixed: '拉手款式固定：请确认安装位置（距底≥50mm）。',
+    stepHandleSubtitleCnc:
+      'CNC 一体铣型拉手：金属色与型材一致，不可单独选拉手色；长度固定 160mm。填写安装位置（默认中心距底 960mm）。',
+    stepHandleSubtitleFixed: '拉手款式固定：请确认拉手中心距底高度（下边距门底须大于 50mm）。',
     stepHandleMountTitle: '拉手安装示意与尺寸',
     stepHandleMountHintSeparate:
-      '拉手长度固定 160mm。距底高度推荐 960mm；须保证拉手中心上下各≥120mm 净距（系统已校验）。',
+      '拉手长度固定 160mm。推荐中心距底 960mm；拉手下边距门底须大于 50mm；拉手中心距顶须≥120mm（系统已校验）。',
     stepHandleMountHintCnc:
-      '标配拉手长 160mm，可勾选通长。距底高度推荐 960mm，且须≥50mm。',
-    stepHandleMountHintFixed: '仅需填写距底安装高度，须≥50mm。',
+      '拉手长度固定 160mm（此处为拉手中心距门底；下边距门底须大于 50mm）。推荐中心高度 960mm。',
+    stepHandleMountHintFixed: '填写拉手中心距门底；下边距门底须大于 50mm。',
     labelHandleBottomMm: '拉手中心距门底 (mm)',
     labelHandleLengthMm: '拉手长度 (mm)',
     labelCncFullLength: '通长铣型拉手',
@@ -185,11 +186,8 @@ const M = {
       selectHingeColor: '请选择铰链颜色。',
       selectHingeHardware: '请选择铰链型号。',
       handleMountFill: '请填写拉手距底高度（需已填门高）。',
-      handleMountBottomMinSeparate:
-        '分体拉手：拉手中心距底部须≥120mm（标配距底960mm；拉手长度固定160mm）。',
+      handleMountKickGuard: '为防止撞脚，拉手位置需距离底端大于50mm',
       handleMountTopClearance: '拉手中心距顶部须≥120mm，请调整距底高度或增大门高。',
-      handleMountBottomMin50: '拉手距底高度须≥50mm。',
-      handleMountLength: '请填写拉手长度（≥50mm）或勾选 CNC 通长。',
       hingeAirMaxHeight:
         '天地铰链 / 重型天地铰链：门高须严格小于 2700 mm，请减小高度或更换门框。',
       hingePositionOutOfRange:
@@ -261,13 +259,17 @@ const M = {
     stepHandleSubtitleNone: 'No handle selection is required for this frame.',
     stepHandleSkip: 'You can skip this step.',
     stepHandleSubtitleSeparate: 'Separate handle: pick a variant, then set position and dimensions.',
-    stepHandleSubtitleCnc: 'CNC routed pull: confirm style, then position and length (full-length optional).',
-    stepHandleSubtitleFixed: 'Fixed handle style: set mounting position only (≥50mm from bottom).',
+    stepHandleSubtitleCnc:
+      'CNC integrated pull: same metal finish as the frame profile; length fixed 160mm. Set position (default 960mm from bottom).',
+    stepHandleSubtitleFixed:
+      'Fixed handle style: set handle center height from bottom (lower edge must be >50mm above door bottom).',
     stepHandleMountTitle: 'Handle position & dimensions',
     stepHandleMountHintSeparate:
-      'Pull length is fixed at 160mm. Recommended 960mm from bottom; keep ≥120mm clear top & bottom (validated).',
-    stepHandleMountHintCnc: 'Default length 160mm or full-length. Recommended 960mm from bottom, minimum 50mm.',
-    stepHandleMountHintFixed: 'Enter height from bottom only (≥50mm).',
+      'Pull length is fixed at 160mm. Recommended 960mm center from bottom; lower edge >50mm above door bottom; handle center ≥120mm from top (validated).',
+    stepHandleMountHintCnc:
+      'Pull length is fixed at 160mm (center height from bottom; lower edge must stay >50mm above door bottom). Default center height 960mm.',
+    stepHandleMountHintFixed:
+      'Enter handle center height from bottom; lower edge must stay >50mm above the door bottom.',
     labelHandleBottomMm: 'Handle center height from bottom (mm)',
     labelHandleLengthMm: 'Handle length (mm)',
     labelCncFullLength: 'Full-length CNC pull',
@@ -391,11 +393,9 @@ const M = {
       selectHingeColor: 'Select a hinge color.',
       selectHingeHardware: 'Select a hinge model.',
       handleMountFill: 'Enter handle height from bottom (door height required).',
-      handleMountBottomMinSeparate:
-        'Separate handle: handle center must be ≥120mm from bottom (default 960mm; pull length fixed 160mm).',
+      handleMountKickGuard:
+        'To avoid toe strikes, the pull must sit more than 50 mm above the door bottom (lower edge clearance).',
       handleMountTopClearance: 'Handle center must be ≥120mm from top — adjust height from bottom or increase door height.',
-      handleMountBottomMin50: 'Handle height from bottom must be ≥50mm.',
-      handleMountLength: 'Enter handle length (≥50mm) or check full-length CNC.',
       hingeAirMaxHeight:
         'Air / heavy-duty air hinge: door height must be strictly under 2700 mm — reduce height or change frame.',
       hingePositionOutOfRange:

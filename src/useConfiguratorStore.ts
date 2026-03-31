@@ -16,7 +16,9 @@ import {
   handleList,
   getHardwareByCode,
   getMatchedHandles,
+  SEPARATE_PULL_CATALOG_CODES,
 } from './data';
+import { HANDLE_PULL_LENGTH_MM, isHandleKickGuardViolated } from './handleRules';
 import {
   MIN_BILLABLE_AREA_M2,
   PET_SURFACE_SURCHARGE_PER_SQM,
@@ -466,6 +468,17 @@ function frameUsesHandleColorStep(frame: Frame | null): boolean {
   return !frameSkipsHandleUi(frame);
 }
 
+/** CNC 铣型拉手与型材同色，不在界面单独选拉手颜色。 */
+export function frameShowsHandleColorPicker(frame: Frame | null): boolean {
+  if (!frame) return false;
+  if (frame.handleWorkflow === 'cnc') return false;
+  return frameUsesHandleColorStep(frame);
+}
+
+const SEPARATE_PULL_CODE_SET = new Set(
+  SEPARATE_PULL_CATALOG_CODES.map((c) => c.toLowerCase()),
+);
+
 // =============================================================================
 // Hardware Matching Helper
 // =============================================================================
@@ -721,6 +734,19 @@ function colorTokenFromFinish(finishName: string, excelCode: string | null | und
   return null;
 }
 
+/** CNC SKU：拉手金属色与门板饰面一致；分体 / 固定等沿用已选拉手色。 */
+function handleAccentTokenForSku(s: ConfiguratorState, frame: Frame | null): string | null {
+  const f = frame ?? findFrame(s.selectedFrameCode);
+  if (f?.handleWorkflow === 'cnc') {
+    const dp = parseFinishColorSelectionId(s.selectedFinishColorCode);
+    if (!dp) return null;
+    return (
+      colorTokenFromFinish(dp.name, dp.excelCode) ?? skuSanitize(String(dp.excelCode ?? dp.name))
+    );
+  }
+  return s.selectedHandleColor;
+}
+
 function finishCategoryToHandleCategory(fc: FinishCategory): HandleFinishCategory {
   return fc === 'anodize' ? 'anodize' : 'metalSpray';
 }
@@ -925,7 +951,10 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
         } else if (wf === 'cnc' && frame.handleOptions.length === 0) {
           autoHandleCode = 'CNC';
         } else {
-          const mh = getMatchedHandles(frame);
+          let mh = getMatchedHandles(frame);
+          if (wf === 'separate') {
+            mh = mh.filter((h) => SEPARATE_PULL_CODE_SET.has(h.code.toLowerCase()));
+          }
           if (mh.length > 0) {
             autoHandleCode = mh[0].code;
           } else if (frame.matchedHandle) {
@@ -1207,11 +1236,13 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
       },
 
       setHandleMount: (bottomMm, lengthMm, cncFull) => {
+        const frame = findFrame(get().selectedFrameCode);
+        const isCnc = frame?.handleWorkflow === 'cnc';
         set(
           {
             handleBottomMm: finiteNullableMm(bottomMm),
-            handleLengthMm: finiteNullableMm(lengthMm),
-            handleCncFullLength: cncFull,
+            handleLengthMm: isCnc ? HANDLE_PULL_LENGTH_MM : finiteNullableMm(lengthMm),
+            handleCncFullLength: isCnc ? false : cncFull,
             configurationConfirmed: false,
           },
           undefined,
@@ -1549,7 +1580,10 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
             return { handle, disabled: handle.code !== 'CNC' };
           }
           const matched = isHandleMatchedToFrame(handle, frame);
-          return { handle, disabled: !matched };
+          const catalogOk =
+            frame.handleWorkflow !== 'separate' ||
+            SEPARATE_PULL_CODE_SET.has(handle.code.toLowerCase());
+          return { handle, disabled: !matched || !catalogOk };
         });
       },
 
@@ -1841,7 +1875,12 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
 
         const frame = findFrame(s.selectedFrameCode);
         if (frame && frameUsesHandleColorStep(frame)) {
-          const choices = getMatchedHandles(frame);
+          let choices = getMatchedHandles(frame);
+          if (frame.handleWorkflow === 'separate') {
+            choices = choices.filter((h) =>
+              SEPARATE_PULL_CODE_SET.has(h.code.toLowerCase()),
+            );
+          }
           const mustPickFromGrid =
             frame.handleWorkflow === 'separate' ||
             frame.handleWorkflow === 'legacy_catalog' ||
@@ -1857,8 +1896,10 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
           }
           if (s.selectedHandleCode) {
             const h = handleList.find((x) => x.code === s.selectedHandleCode);
+            const needsColor = frameShowsHandleColorPicker(frame);
             const allowed = h ? effectiveHandleAllowedColorSet(h, frame) : new Set<string>();
             if (
+              needsColor &&
               allowed.size > 0 &&
               (!s.selectedHandleFinishSelectionId || !s.selectedHandleColor)
             ) {
@@ -1873,17 +1914,11 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
           if (h == null || b == null) {
             errors.push(V.handleMountFill);
           } else {
-            if (b < 50) {
-              errors.push(V.handleMountBottomMin50);
-            } else if (frame.handleWorkflow === 'separate' && b < 120) {
-              errors.push(V.handleMountBottomMinSeparate);
+            if (isHandleKickGuardViolated(b, HANDLE_PULL_LENGTH_MM)) {
+              errors.push(V.handleMountKickGuard);
             }
             if (frame.handleWorkflow === 'separate' && h - b < 120) {
               errors.push(V.handleMountTopClearance);
-            }
-            if (frame.handleWorkflow === 'cnc' && !s.handleCncFullLength) {
-              const len = finiteNullableMm(s.handleLengthMm);
-              if (len == null || len < 50) errors.push(V.handleMountLength);
             }
           }
         }
@@ -1952,8 +1987,10 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
           handleSeg = 'NOHNDL';
         } else if (wf === 'vshape') {
           handleSeg = skuSanitize(frame.fixedHandleCode ?? 'VSHAPE');
-        } else if (selectedHandleCode && s.selectedHandleColor) {
-          handleSeg = `${skuSanitize(selectedHandleCode)}${skuSanitize(s.selectedHandleColor)}`;
+        } else if (selectedHandleCode) {
+          const accent = handleAccentTokenForSku(s, frame);
+          if (!accent) return null;
+          handleSeg = `${skuSanitize(selectedHandleCode)}${skuSanitize(accent)}`;
         } else if (wf === 'legacy_catalog' && frame.matchedHandle) {
           const matchedHandles = handleList.filter((h) => isHandleMatchedToFrame(h, frame));
           if (matchedHandles.length > 0) {
@@ -2006,8 +2043,9 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
           handle = skuSanitize(fr?.fixedHandleCode ?? 'VSHAPE');
         } else if (s.selectedHandleCode) {
           handle = skuSanitize(s.selectedHandleCode);
-          if (s.selectedHandleColor) {
-            handle = `${handle}-${skuSanitize(s.selectedHandleColor)}`;
+          const accent = handleAccentTokenForSku(s, fr);
+          if (accent) {
+            handle = `${handle}-${skuSanitize(accent)}`;
           }
         } else if (fr?.matchedHandle) {
           handle = skuSanitize(fr.matchedHandle);

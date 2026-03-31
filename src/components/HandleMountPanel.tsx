@@ -1,5 +1,10 @@
 import type { CSSProperties } from 'react';
 import type { Frame } from '../data';
+import {
+  HANDLE_CENTER_MIN_FROM_BOTTOM_MM,
+  HANDLE_PULL_LENGTH_MM,
+  isHandleKickGuardViolated,
+} from '../handleRules';
 import { msg } from '../translations';
 import { MediaThumb } from './MediaThumb';
 import { HandlePositionSchematic } from './HandlePositionSchematic';
@@ -33,27 +38,21 @@ export function HandleMountPanel({
 }) {
   const wf = frame.handleWorkflow;
   const pic = frame.handleDiagramPicture;
-  const showLen = wf === 'cnc';
   const bottomVal = finiteMm(bottomMm);
   const heightVal = finiteMm(heightMm);
-  /** Universal floor: any workflow must be ≥50 mm from bottom (UI + confirm). */
-  const below50 = bottomVal != null && bottomVal < 50;
-  /** Separate pulls: additionally ≥120 mm from bottom when already past the 50 mm floor. */
-  const belowSeparate120 =
-    wf === 'separate' && bottomVal != null && bottomVal >= 50 && bottomVal < 120;
+  const kickInvalid =
+    bottomVal != null && isHandleKickGuardViolated(bottomVal, HANDLE_PULL_LENGTH_MM);
   const topClearInvalid =
     wf === 'separate' &&
     bottomVal != null &&
     heightVal != null &&
     heightVal - bottomVal < 120;
-  const bottomInvalid = below50 || belowSeparate120 || topClearInvalid;
-  const bottomErrorText = below50
-    ? t.validation.handleMountBottomMin50
-    : belowSeparate120
-      ? t.validation.handleMountBottomMinSeparate
-      : topClearInvalid
-        ? t.validation.handleMountTopClearance
-        : null;
+  const bottomInvalid = kickInvalid || topClearInvalid;
+  const bottomErrorText = kickInvalid
+    ? t.validation.handleMountKickGuard
+    : topClearInvalid
+      ? t.validation.handleMountTopClearance
+      : null;
 
   const inputStyle: CSSProperties = {
     width: '100%',
@@ -139,7 +138,7 @@ export function HandleMountPanel({
         </label>
         <input
           type="number"
-          min={50}
+          min={HANDLE_CENTER_MIN_FROM_BOTTOM_MM}
           value={bottomMm ?? ''}
           onChange={(e) => {
             const v = e.target.value;
@@ -171,52 +170,7 @@ export function HandleMountPanel({
           </p>
         ) : null}
 
-        {showLen ? (
-          <>
-            <label
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                marginTop: 16,
-                fontSize: 14,
-                cursor: 'pointer',
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={cncFull}
-                onChange={(e) => onChange(bottomMm, lengthMm, e.target.checked)}
-              />
-              {t.labelCncFullLength}
-            </label>
-            {!cncFull ? (
-              <>
-                <label
-                  style={{
-                    display: 'block',
-                    fontSize: 13,
-                    marginTop: 14,
-                    marginBottom: 6,
-                    color: 'var(--text-secondary)',
-                  }}
-                >
-                  {t.labelHandleLengthMm}
-                </label>
-                <input
-                  type="number"
-                  min={50}
-                  value={lengthMm ?? ''}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    onChange(bottomMm, v === '' ? null : Number(v), cncFull);
-                  }}
-                  style={inputStyle}
-                />
-              </>
-            ) : null}
-          </>
-        ) : wf === 'separate' ? (
+        {wf === 'separate' || wf === 'cnc' ? (
           <p style={{ marginTop: 14, fontSize: 13, color: 'var(--text-secondary)' }}>
             {t.stepHandleLengthFixed160}
           </p>

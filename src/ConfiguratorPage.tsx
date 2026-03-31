@@ -3,6 +3,7 @@ import type { Frame } from './data';
 import {
   useConfiguratorStore,
   buildFinishColorId,
+  frameShowsHandleColorPicker,
   type FinishCategory,
   type FrameOption,
 } from './useConfiguratorStore';
@@ -139,10 +140,7 @@ export function ConfiguratorPage() {
       frame.handleWorkflow === 'cnc' ||
       frame.handleWorkflow === 'fixed');
   const showHandleColorBlock =
-    frame &&
-    frame.handleWorkflow !== 'none' &&
-    frame.handleWorkflow !== 'vshape' &&
-    Boolean(selectedHandleCode);
+    frame && frameShowsHandleColorPicker(frame) && Boolean(selectedHandleCode);
 
   const gridStyle = {
     display: 'grid',
