@@ -127,6 +127,7 @@ export interface SurfaceFinishes {
   anodize: SurfaceColor[];
   spraySoftTouch: SurfaceColor[];
   sprayMetallic: SurfaceColor[];
+  pet: SurfaceColor[];
 }
 
 export interface Hardware {
@@ -159,7 +160,7 @@ export const frames = [
     allowedFillers: ['glass'],
     standardFillers: ['G01', 'G33', 'G36'],
     fillerThicknessLimit: [4, 5],
-    allowedFinishing: ['anodize', 'spraySoftTouch', 'sprayMetallic'],
+    allowedFinishing: ['anodize', 'spraySoftTouch', 'sprayMetallic', 'pet'],
     specificColors: null,
     sizeLimits: {
       minW: null,
@@ -208,7 +209,7 @@ export const frames = [
     allowedFillers: ['glass'],
     standardFillers: ['G01', 'G33', 'G36'],
     fillerThicknessLimit: [4],
-    allowedFinishing: ['anodize', 'spraySoftTouch', 'sprayMetallic'],
+    allowedFinishing: ['anodize', 'spraySoftTouch', 'sprayMetallic', 'pet'],
     specificColors: null,
     sizeLimits: {
       minW: null,
@@ -241,7 +242,7 @@ export const frames = [
     allowedFillers: ['glass'],
     standardFillers: ['G01', 'G33', 'G36'],
     fillerThicknessLimit: [4, 5],
-    allowedFinishing: ['anodize', 'spraySoftTouch', 'sprayMetallic'],
+    allowedFinishing: ['anodize', 'spraySoftTouch', 'sprayMetallic', 'pet'],
     specificColors: null,
     sizeLimits: {
       minW: null,
@@ -274,7 +275,7 @@ export const frames = [
     allowedFillers: ['glass'],
     standardFillers: [],
     fillerThicknessLimit: [4, 5],
-    allowedFinishing: ['anodize', 'spraySoftTouch', 'sprayMetallic'],
+    allowedFinishing: ['anodize', 'spraySoftTouch', 'sprayMetallic', 'pet'],
     specificColors: null,
     sizeLimits: {
       minW: null,
@@ -307,7 +308,7 @@ export const frames = [
     allowedFillers: ['glass'],
     standardFillers: ['G01', 'G33', 'G36'],
     fillerThicknessLimit: [4],
-    allowedFinishing: ['anodize', 'spraySoftTouch', 'sprayMetallic'],
+    allowedFinishing: ['anodize', 'spraySoftTouch', 'sprayMetallic', 'pet'],
     specificColors: null,
     sizeLimits: {
       minW: 350,
@@ -356,7 +357,7 @@ export const frames = [
     allowedFillers: ['glass'],
     standardFillers: ['G01', 'G33', 'G36'],
     fillerThicknessLimit: [4],
-    allowedFinishing: ['anodize', 'spraySoftTouch', 'sprayMetallic'],
+    allowedFinishing: ['anodize', 'spraySoftTouch', 'sprayMetallic', 'pet'],
     specificColors: null,
     sizeLimits: {
       minW: null,
@@ -389,7 +390,7 @@ export const frames = [
     allowedFillers: ['glass'],
     standardFillers: ['G01', 'G33', 'G36'],
     fillerThicknessLimit: [4, 5],
-    allowedFinishing: ['anodize', 'spraySoftTouch', 'sprayMetallic'],
+    allowedFinishing: ['anodize', 'spraySoftTouch', 'sprayMetallic', 'pet'],
     specificColors: null,
     sizeLimits: {
       minW: null,
@@ -422,7 +423,7 @@ export const frames = [
     allowedFillers: ['glass'],
     standardFillers: ['G01', 'G33', 'G36'],
     fillerThicknessLimit: [5],
-    allowedFinishing: ['anodize', 'spraySoftTouch', 'sprayMetallic'],
+    allowedFinishing: ['anodize', 'spraySoftTouch', 'sprayMetallic', 'pet'],
     specificColors: null,
     sizeLimits: {
       minW: null,
@@ -455,7 +456,7 @@ export const frames = [
     allowedFillers: ['glass'],
     standardFillers: ['G01', 'G33', 'G36'],
     fillerThicknessLimit: [4, 5],
-    allowedFinishing: ['anodize', 'spraySoftTouch', 'sprayMetallic'],
+    allowedFinishing: ['anodize', 'spraySoftTouch', 'sprayMetallic', 'pet'],
     specificColors: null,
     sizeLimits: {
       minW: null,
@@ -488,7 +489,7 @@ export const frames = [
     allowedFillers: ['glass'],
     standardFillers: ['G01', 'G33', 'G36'],
     fillerThicknessLimit: [4],
-    allowedFinishing: ['anodize', 'spraySoftTouch', 'sprayMetallic'],
+    allowedFinishing: ['anodize', 'spraySoftTouch', 'sprayMetallic', 'pet'],
     specificColors: null,
     sizeLimits: {
       minW: null,
@@ -521,7 +522,7 @@ export const frames = [
     allowedFillers: ['glass'],
     standardFillers: ['G01', 'G33', 'G36'],
     fillerThicknessLimit: [4, 5],
-    allowedFinishing: ['anodize', 'spraySoftTouch', 'sprayMetallic'],
+    allowedFinishing: ['anodize', 'spraySoftTouch', 'sprayMetallic', 'pet'],
     specificColors: null,
     sizeLimits: {
       minW: null,
@@ -554,7 +555,7 @@ export const frames = [
     allowedFillers: ['glass'],
     standardFillers: ['G01', 'G33', 'G36'],
     fillerThicknessLimit: [4, 5],
-    allowedFinishing: ['anodize', 'spraySoftTouch', 'sprayMetallic'],
+    allowedFinishing: ['anodize', 'spraySoftTouch', 'sprayMetallic', 'pet'],
     specificColors: null,
     sizeLimits: {
       minW: null,
@@ -587,7 +588,7 @@ export const frames = [
     allowedFillers: ['leather'],
     standardFillers: [],
     fillerThicknessLimit: [],
-    allowedFinishing: ['anodize', 'spraySoftTouch', 'sprayMetallic'],
+    allowedFinishing: ['anodize', 'spraySoftTouch', 'sprayMetallic', 'pet'],
     specificColors: null,
     sizeLimits: {
       minW: null,
@@ -620,7 +621,7 @@ export const frames = [
     allowedFillers: ['leather'],
     standardFillers: [],
     fillerThicknessLimit: [],
-    allowedFinishing: ['anodize', 'spraySoftTouch', 'sprayMetallic'],
+    allowedFinishing: ['anodize', 'spraySoftTouch', 'sprayMetallic', 'pet'],
     specificColors: null,
     sizeLimits: {
       minW: null,
@@ -669,7 +670,7 @@ export const frames = [
     allowedFillers: ['glass'],
     standardFillers: ['G01', 'G33', 'G36'],
     fillerThicknessLimit: [5],
-    allowedFinishing: ['anodize', 'spraySoftTouch', 'sprayMetallic'],
+    allowedFinishing: ['anodize', 'spraySoftTouch', 'sprayMetallic', 'pet'],
     specificColors: null,
     sizeLimits: {
       minW: null,
@@ -702,7 +703,7 @@ export const frames = [
     allowedFillers: ['glass'],
     standardFillers: ['G01', 'G33', 'G36'],
     fillerThicknessLimit: [5],
-    allowedFinishing: ['anodize', 'spraySoftTouch', 'sprayMetallic'],
+    allowedFinishing: ['anodize', 'spraySoftTouch', 'sprayMetallic', 'pet'],
     specificColors: null,
     sizeLimits: {
       minW: null,
@@ -735,7 +736,7 @@ export const frames = [
     allowedFillers: ['glass'],
     standardFillers: ['G01', 'G33', 'G36'],
     fillerThicknessLimit: [5],
-    allowedFinishing: ['anodize', 'spraySoftTouch', 'sprayMetallic'],
+    allowedFinishing: ['anodize', 'spraySoftTouch', 'sprayMetallic', 'pet'],
     specificColors: null,
     sizeLimits: {
       minW: null,
@@ -768,7 +769,7 @@ export const frames = [
     allowedFillers: ['glass'],
     standardFillers: ['G01', 'G33', 'G36'],
     fillerThicknessLimit: [8],
-    allowedFinishing: ['anodize', 'spraySoftTouch', 'sprayMetallic'],
+    allowedFinishing: ['anodize', 'spraySoftTouch', 'sprayMetallic', 'pet'],
     specificColors: null,
     sizeLimits: {
       minW: null,
@@ -801,7 +802,7 @@ export const frames = [
     allowedFillers: ['quartz stone'],
     standardFillers: [],
     fillerThicknessLimit: [4],
-    allowedFinishing: ['anodize', 'spraySoftTouch', 'sprayMetallic'],
+    allowedFinishing: ['anodize', 'spraySoftTouch', 'sprayMetallic', 'pet'],
     specificColors: null,
     sizeLimits: {
       minW: null,
@@ -834,7 +835,7 @@ export const frames = [
     allowedFillers: ['glass'],
     standardFillers: ['G01', 'G33', 'G36'],
     fillerThicknessLimit: [5],
-    allowedFinishing: ['anodize', 'spraySoftTouch', 'sprayMetallic'],
+    allowedFinishing: ['anodize', 'spraySoftTouch', 'sprayMetallic', 'pet'],
     specificColors: null,
     sizeLimits: {
       minW: 1200,
@@ -867,7 +868,7 @@ export const frames = [
     allowedFillers: ['glass'],
     standardFillers: ['G01', 'G33', 'G36'],
     fillerThicknessLimit: [8],
-    allowedFinishing: ['anodize', 'spraySoftTouch', 'sprayMetallic'],
+    allowedFinishing: ['anodize', 'spraySoftTouch', 'sprayMetallic', 'pet'],
     specificColors: null,
     sizeLimits: {
       minW: null,
@@ -900,7 +901,7 @@ export const frames = [
     allowedFillers: ['glass'],
     standardFillers: ['G01', 'G33', 'G36'],
     fillerThicknessLimit: [8],
-    allowedFinishing: ['anodize', 'spraySoftTouch', 'sprayMetallic'],
+    allowedFinishing: ['anodize', 'spraySoftTouch', 'sprayMetallic', 'pet'],
     specificColors: null,
     sizeLimits: {
       minW: 1200,
@@ -2012,6 +2013,23 @@ export const surfaceFinishes = {
       picture: '/assets/catalog/spray-metallic/PAD12.png',
     }
   ],
+  pet: [
+    {
+      code: 'QZ01',
+      name: 'White Oak',
+      picture: '/assets/catalog/pet/QZ01.png',
+    },
+    {
+      code: 'QZ02',
+      name: 'Walnut',
+      picture: '/assets/catalog/pet/QZ02.png',
+    },
+    {
+      code: 'QZ03',
+      name: 'Black Oak',
+      picture: '/assets/catalog/pet/QZ03.png',
+    },
+  ],
 } as const;
 
 
@@ -2290,6 +2308,7 @@ export function getAvailableFinishes(frame: Frame): SurfaceFinishes {
     anodize: allowed.includes('anodize') ? [...surfaceFinishes.anodize] : [],
     spraySoftTouch: allowed.includes('spraySoftTouch') ? [...surfaceFinishes.spraySoftTouch] : [],
     sprayMetallic: allowed.includes('sprayMetallic') ? [...surfaceFinishes.sprayMetallic] : [],
+    pet: allowed.includes('pet') ? [...surfaceFinishes.pet] : [],
   };
 }
 

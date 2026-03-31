@@ -134,6 +134,7 @@ const M = {
       anodize: '阳极氧化',
       spraySoftTouch: '亲肤喷涂',
       sprayMetallic: '金属喷涂',
+      pet: 'PET',
     } satisfies Record<FinishCategory, string>,
 
     filler: {
@@ -165,6 +166,9 @@ const M = {
         `展开面积 ${actual}㎡；不足 0.5㎡ 按 ${billed}㎡ 计费`,
       customGlassLeadTimeHint: '（特殊定制玻璃：在欧洲灰 G33 单价基础上 +¥300/㎡，货期约多 1 周）',
       customGlassTileBadge: '特殊定制 · 货期+约1周',
+      petSurfaceLine: 'PET 表面处理（在欧洲灰 G33 平方价基础上 +¥150/㎡）',
+      petSurfaceDetail: (billedM2: string, actualM2: string) =>
+        `计费 ${billedM2}㎡（展开 ${actualM2}㎡；不足 0.5㎡ 按 0.5㎡）`,
     },
 
     validation: {
@@ -334,6 +338,7 @@ const M = {
       anodize: 'Anodize',
       spraySoftTouch: 'Spray soft-touch',
       sprayMetallic: 'Spray metallic',
+      pet: 'PET',
     } satisfies Record<FinishCategory, string>,
 
     filler: {
@@ -367,6 +372,9 @@ const M = {
       customGlassLeadTimeHint:
         '(Special-order glass: European grey G33 rate + ¥300/m²; lead time ≈ +1 week)',
       customGlassTileBadge: 'Special order · +~1 week',
+      petSurfaceLine: 'PET finish (+¥150/m² on top of European grey G33 panel rate)',
+      petSurfaceDetail: (billedM2: string, actualM2: string) =>
+        `Billed ${billedM2} m² (actual ${actualM2} m²; minimum 0.5 m²)`,
     },
 
     validation: {

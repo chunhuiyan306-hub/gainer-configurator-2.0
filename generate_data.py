@@ -582,18 +582,21 @@ def infer_allowed_fillers(door_type_raw: str, std_filler: str):
 
 
 def parse_allowed_finishing(surface_raw: str, color_raw: str):
-    """Derive allowedFinishing list from raw surface/color fields."""
+    """Derive allowedFinishing list from raw surface/color fields. PET is always allowed."""
     if not surface_raw:
-        return ["anodize", "spraySoftTouch", "sprayMetallic"]
-    sf = surface_raw.lower().replace("\n", " ")
-    result = []
-    if "anod" in sf:
-        result.append("anodize")
-    if "spray" in sf:
-        result.append("spraySoftTouch")
-        result.append("sprayMetallic")
-    if not result:
         result = ["anodize", "spraySoftTouch", "sprayMetallic"]
+    else:
+        sf = surface_raw.lower().replace("\n", " ")
+        result = []
+        if "anod" in sf:
+            result.append("anodize")
+        if "spray" in sf:
+            result.append("spraySoftTouch")
+            result.append("sprayMetallic")
+        if not result:
+            result = ["anodize", "spraySoftTouch", "sprayMetallic"]
+    if "pet" not in result:
+        result.append("pet")
     return result
 
 
@@ -1247,6 +1250,13 @@ for row in raw["Sprayed Metallic Color"][1:]:
         "picture": _surface_pic(metal_pics, code, nm),
     })
 
+# PET wood-grain film — not from door Excel; synced with price / product sheet (QZ01–QZ03).
+pet_colors = [
+    {"code": "QZ01", "name": "White Oak", "picture": "/assets/catalog/pet/QZ01.png"},
+    {"code": "QZ02", "name": "Walnut", "picture": "/assets/catalog/pet/QZ02.png"},
+    {"code": "QZ03", "name": "Black Oak", "picture": "/assets/catalog/pet/QZ03.png"},
+]
+
 # ---------------------------------------------------------------------------
 # 7. HARDWARE
 # ---------------------------------------------------------------------------
@@ -1589,6 +1599,7 @@ export interface SurfaceFinishes {
   anodize: SurfaceColor[];
   spraySoftTouch: SurfaceColor[];
   sprayMetallic: SurfaceColor[];
+  pet: SurfaceColor[];
 }
 
 export interface Hardware {
@@ -1650,6 +1661,7 @@ out_parts.append(ts_obj_top({
     "anodize": anodize_colors,
     "spraySoftTouch": spray_soft_colors,
     "sprayMetallic": spray_metallic_colors,
+    "pet": pet_colors,
 }, "surfaceFinishes"))
 
 # ---- Hardware ----
@@ -1731,6 +1743,7 @@ export function getAvailableFinishes(frame: Frame): SurfaceFinishes {
     anodize: allowed.includes('anodize') ? [...surfaceFinishes.anodize] : [],
     spraySoftTouch: allowed.includes('spraySoftTouch') ? [...surfaceFinishes.spraySoftTouch] : [],
     sprayMetallic: allowed.includes('sprayMetallic') ? [...surfaceFinishes.sprayMetallic] : [],
+    pet: allowed.includes('pet') ? [...surfaceFinishes.pet] : [],
   };
 }
 

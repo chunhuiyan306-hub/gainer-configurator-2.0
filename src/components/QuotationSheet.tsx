@@ -7,6 +7,7 @@ function fmtFinishCategory(locale: 'zh' | 'en', cat: string | null): string {
   if (cat === 'anodize') return L.anodize;
   if (cat === 'spraySoftTouch') return L.spraySoftTouch;
   if (cat === 'sprayMetallic') return L.sprayMetallic;
+  if (cat === 'pet') return L.pet;
   return cat;
 }
 

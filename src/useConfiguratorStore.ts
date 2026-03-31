@@ -19,6 +19,7 @@ import {
 } from './data';
 import {
   MIN_BILLABLE_AREA_M2,
+  PET_SURFACE_SURCHARGE_PER_SQM,
   resolveAluminumCabinetGlassSqm,
   frameHasAluminumPriceMatrix,
   isGlassUnavailableForAluminumFrame,
@@ -42,7 +43,7 @@ function finiteNullableMm(v: number | null | undefined): number | null {
 // Type Definitions
 // =============================================================================
 
-export type FinishCategory = 'anodize' | 'spraySoftTouch' | 'sprayMetallic';
+export type FinishCategory = 'anodize' | 'spraySoftTouch' | 'sprayMetallic' | 'pet';
 /** Handle step: anodize vs combined spray (亲肤 + 金属喷涂). */
 export type HandleFinishCategory = 'anodize' | 'metalSpray';
 export type FillerType = 'glass' | 'leather' | 'woodVeneer' | 'quartzStone';
@@ -643,7 +644,14 @@ function parseFinishColorSelectionId(id: string | null): {
   if (!id) return null;
   const [cat, codePart, ...nameParts] = id.split('::');
   const name = nameParts.join('::');
-  if (cat !== 'anodize' && cat !== 'spraySoftTouch' && cat !== 'sprayMetallic') return null;
+  if (
+    cat !== 'anodize' &&
+    cat !== 'spraySoftTouch' &&
+    cat !== 'sprayMetallic' &&
+    cat !== 'pet'
+  ) {
+    return null;
+  }
   return {
     category: cat as FinishCategory,
     excelCode: codePart === '' ? null : codePart,
@@ -656,6 +664,7 @@ const FINISH_FAMILY_SKU_PREFIX: Record<FinishCategory, string> = {
   anodize: 'A',
   spraySoftTouch: 'T',
   sprayMetallic: 'M',
+  pet: 'F',
 };
 
 function finishProcessSkuSegment(
@@ -1394,7 +1403,12 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
       // =====================================================================
       getFinishCategoryOptions: (): FinishCategoryOption[] => {
         const frame = findFrame(get().selectedFrameCode);
-        const allCategories: FinishCategory[] = ['anodize', 'spraySoftTouch', 'sprayMetallic'];
+        const allCategories: FinishCategory[] = [
+          'anodize',
+          'spraySoftTouch',
+          'sprayMetallic',
+          'pet',
+        ];
 
         const L = msg(get().uiLocale);
         return allCategories.map((cat) => ({
@@ -1714,6 +1728,20 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
           hasCustom = true;
         }
 
+        // --- PET surface surcharge (cabinet; +¥150/m² on billable area, min 0.5 m²) ---
+        if (frame?.frameCategory === 'cabinet' && state.selectedFinishCategory === 'pet') {
+          const petBill = Math.max(area, MIN_BILLABLE_AREA_M2);
+          const petAmt =
+            Math.round(petBill * PET_SURFACE_SURCHARGE_PER_SQM * 100) / 100;
+          lines.push({
+            label: L.petSurfaceLine,
+            amount: petAmt,
+            status: 'calculated',
+            detail: L.petSurfaceDetail(petBill.toFixed(2), area.toFixed(3)),
+          });
+          runningTotal += petAmt;
+        }
+
         // --- Hardware / Hinge price ---
         const hingeCalc = get().getHingeCalculation();
         if (hingeCalc.matchedHardware.length > 0 && hingeCalc.qty > 0) {
@@ -2018,7 +2046,8 @@ export const useConfiguratorStore = create<ConfiguratorStore>()(
         const an = frame.allowedFinishing.includes('anodize');
         const ms =
           frame.allowedFinishing.includes('spraySoftTouch') ||
-          frame.allowedFinishing.includes('sprayMetallic');
+          frame.allowedFinishing.includes('sprayMetallic') ||
+          frame.allowedFinishing.includes('pet');
         return [
           { category: 'anodize', label: L.handleFinish.anodize, disabled: !an },
           { category: 'metalSpray', label: L.handleFinish.metalSpray, disabled: !ms },

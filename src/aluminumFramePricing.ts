@@ -9,6 +9,9 @@ export const MIN_BILLABLE_AREA_M2 = 0.5;
 /** RMB per sqm on top of European grey (G33) for glass types not listed on the price sheet. */
 export const CUSTOM_GLASS_PREMIUM_PER_SQM = 300;
 
+/** PET film surface: added per billable m² (same min area as glass line when applicable). */
+export const PET_SURFACE_SURCHARGE_PER_SQM = 150;
+
 /** Column indices 0..10 are glass; 11 is leather / non-glass column in the sheet. */
 export const ALUMINUM_GLASS_BUCKET_COUNT = 11;
 
